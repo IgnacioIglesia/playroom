@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useAuth } from '../../context/AuthContext'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
 import MesaTruco from './MesaTruco'
@@ -9,6 +10,7 @@ import {
 import { DELAY_MANO } from './constantes'
 
 export default function Truco() {
+  const { usuario } = useAuth()
   const [pantalla, setPantalla] = useState('menu')
   const [limite, setLimite] = useState(30)
   const [muestra, setMuestra] = useState(null)
@@ -361,7 +363,8 @@ export default function Truco() {
         puedeIniciarRetruco={puedeIniciarRetruco} puedeIniciarVale4={puedeIniciarVale4}
         puedeSubirEnvido={puedeSubirEnvido} puedeSubirRealEnvido={puedeSubirRealEnvido} puedeSubirFaltaEnvido={puedeSubirFaltaEnvido}
         nombreRival="Máquina" inicialesRival="🤖"
-        miNombre="Jugador" misIniciales="VOS"
+        miNombre={usuario?.displayName || usuario?.email?.split('@')[0] || 'Jugador'}
+        miPhotoURL={usuario?.photoURL || ''}
         florJ={florJ} florM={florM} florCantada={florCantada}
         mostrarCartasRival={mostrarCartasRival}
         nivelEnvido={envidoNivel}

@@ -1,4 +1,5 @@
 import { CartaComp, CartaMuestra, BtnCanto, TanteadorPalillos } from './componentes'
+import Avatar from '../../components/Avatar'
 
 export default function MesaTruco({
   manoJ, manoM, cjJ, cjM, muestra, resultados, manoActual,
@@ -20,7 +21,7 @@ export default function MesaTruco({
   puedeIniciarRetruco, puedeIniciarVale4,
   puedeSubirEnvido, puedeSubirRealEnvido, puedeSubirFaltaEnvido,
   nombreRival, inicialesRival,
-  miNombre, misIniciales,
+  miNombre, miPhotoURL,
   florJ, florM, florCantada,
   mostrarCartasRival,
   nivelEnvido,
@@ -287,9 +288,7 @@ export default function MesaTruco({
 
         {/* Avatar jugador */}
         <div className="flex flex-col items-center gap-1 mt-1">
-          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-purple-900 border-2 border-purple-600 flex items-center justify-center">
-            <span className="text-white font-extrabold text-base lg:text-lg">{misIniciales}</span>
-          </div>
+          <Avatar usuario={{ displayName: miNombre, photoURL: miPhotoURL }} size="md" />
           <span className="text-gray-400 text-xs font-semibold">{miNombre}</span>
         </div>
 

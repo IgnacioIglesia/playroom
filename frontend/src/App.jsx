@@ -7,6 +7,7 @@ import Capitales from './pages/Capitales'
 import Banderas from './pages/Banderas'
 import Login from './pages/Login'
 import Registro from './pages/Registro'
+import Perfil from './pages/Perfil'
 import Truco from './pages/Truco/index.jsx'
 import TrucoOnline from './pages/Truco/TrucoOnline.jsx'
 
@@ -30,6 +31,7 @@ function App() {
       <Route path="/juegos/banderas" element={<Banderas />} />
       <Route path="/login" element={<Login />} />
       <Route path="/registro" element={<Registro />} />
+      <Route path="/perfil" element={<Perfil />} />
       <Route path="/juegos/truco" element={<Truco />} />
       <Route path='/juegos/truco-online' element={<TrucoOnline socket={socket} />} />
     </Routes>

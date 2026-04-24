@@ -57,7 +57,7 @@ export default function TrucoOnline() {
 
   const { usuario } = useAuth()
   const miNombre = usuario?.displayName || usuario?.email?.split('@')[0] || 'Jugador'
-  const misIniciales = miNombre.slice(0, 2).toUpperCase()
+
 
   const [nombreRival, setNombreRival] = useState('Rival')
   const [inicialesRival, setInicialesRival] = useState('RV')
@@ -1069,8 +1069,8 @@ return (
   nombreRival={nombreRival}
   inicialesRival={inicialesRival}
   miNombre={miNombre}
-  misIniciales={misIniciales}
-  
+  miPhotoURL={usuario?.photoURL || ''}
+
   // EXTRAS
   resultadoUltimaMano={resultadoUltimaMano}
   onSubirEnvidoConNivel={(nivel) => { 

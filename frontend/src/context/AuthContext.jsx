@@ -16,8 +16,13 @@ export function AuthProvider({ children }) {
     return unsub
   }, [])
 
+  const refrescarUsuario = async () => {
+    await auth.currentUser?.reload()
+    setUsuario(auth.currentUser ? { ...auth.currentUser } : null)
+  }
+
   return (
-    <AuthContext.Provider value={{ usuario, cargando }}>
+    <AuthContext.Provider value={{ usuario, cargando, refrescarUsuario }}>
       {!cargando && children}
     </AuthContext.Provider>
   )
