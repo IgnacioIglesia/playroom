@@ -8,7 +8,7 @@ import { DELAY_MANO } from './constantes'
 import { useAuth } from '../../context/AuthContext'
 import MesaTruco from './MesaTruco'
 
-const SOCKET_URL = 'http://localhost:3001'
+const SOCKET_URL = 'https://playroom-backend.onrender.com'
 
 export default function TrucoOnline() {
   const sockRef = useRef(null)
