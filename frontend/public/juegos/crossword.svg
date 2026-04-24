@@ -1,0 +1,21 @@
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="200" fill="#1e1b4b"/>
+  <rect x="110" y="30" width="180" height="140" rx="6" fill="#2e1065" stroke="#7c3aed" stroke-width="2"/>
+  <text x="140" y="65" text-anchor="middle" font-size="22" fill="#a78bfa">P</text>
+  <text x="170" y="65" text-anchor="middle" font-size="22" fill="#fbbf24">A</text>
+  <text x="200" y="65" text-anchor="middle" font-size="22" fill="#a78bfa">Z</text>
+  <text x="230" y="65" text-anchor="middle" font-size="22" fill="#a78bfa">1</text>
+  <text x="140" y="100" text-anchor="middle" font-size="22" fill="#a78bfa">U</text>
+  <text x="170" y="100" text-anchor="middle" font-size="22" fill="#a78bfa">2</text>
+  <text x="200" y="100" text-anchor="middle" font-size="22" fill="#a78bfa">N</text>
+  <text x="230" y="100" text-anchor="middle" font-size="22" fill="#fbbf24">O</text>
+  <text x="140" y="135" text-anchor="middle" font-size="22" fill="#fbbf24">D</text>
+  <text x="170" y="135" text-anchor="middle" font-size="22" fill="#a78bfa">S</text>
+  <text x="200" y="135" text-anchor="middle" font-size="22" fill="#a78bfa">3</text>
+  <text x="230" y="135" text-anchor="middle" font-size="22" fill="#a78bfa">4</text>
+  <text x="122" y="58" font-size="9" fill="#c4b5fd">1</text>
+  <text x="122" y="93" font-size="9" fill="#c4b5fd">2</text>
+  <text x="182" y="128" font-size="9" fill="#c4b5fd">3</text>
+  <text x="212" y="128" font-size="9" fill="#c4b5fd">4</text>
+  <text x="200" y="183" text-anchor="middle" font-size="13" font-family="sans-serif" fill="#6d28d9" font-weight="bold" letter-spacing="3">CRUCIGRAMA</text>
+</svg>

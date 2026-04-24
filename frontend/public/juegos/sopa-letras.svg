@@ -1,0 +1,20 @@
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="200" fill="#1e1b4b"/>
+  <rect x="110" y="25" width="180" height="140" rx="8" fill="#2e1065" stroke="#7c3aed" stroke-width="2"/>
+  <text x="140" y="55" text-anchor="middle" font-size="18" fill="#c4b5fd">G</text>
+  <text x="165" y="55" text-anchor="middle" font-size="18" fill="#fbbf24">A</text>
+  <text x="190" y="55" text-anchor="middle" font-size="18" fill="#c4b5fd">T</text>
+  <text x="215" y="55" text-anchor="middle" font-size="18" fill="#c4b5fd">O</text>
+  <text x="240" y="55" text-anchor="middle" font-size="18" fill="#c4b5fd">S</text>
+  <text x="140" y="85" text-anchor="middle" font-size="18" fill="#fbbf24">P</text>
+  <text x="165" y="85" text-anchor="middle" font-size="18" fill="#c4b5fd">E</text>
+  <text x="190" y="85" text-anchor="middle" font-size="18" fill="#c4b5fd">R</text>
+  <text x="215" y="85" text-anchor="middle" font-size="18" fill="#fbbf24">R</text>
+  <text x="240" y="85" text-anchor="middle" font-size="18" fill="#c4b5fd">O</text>
+  <text x="140" y="115" text-anchor="middle" font-size="18" fill="#c4b5fd">L</text>
+  <text x="165" y="115" text-anchor="middle" font-size="18" fill="#c4b5fd">U</text>
+  <text x="190" y="115" text-anchor="middle" font-size="18" fill="#fbbf24">N</text>
+  <text x="215" y="115" text-anchor="middle" font-size="18" fill="#c4b5fd">A</text>
+  <text x="240" y="115" text-anchor="middle" font-size="18" fill="#c4b5fd">Z</text>
+  <text x="200" y="180" text-anchor="middle" font-size="13" font-family="sans-serif" fill="#6d28d9" font-weight="bold" letter-spacing="3">SOPA DE LETRAS</text>
+</svg>

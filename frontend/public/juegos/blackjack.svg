@@ -1,0 +1,12 @@
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="200" fill="#1e1b4b"/>
+  <rect x="100" y="25" width="90" height="130" rx="10" fill="#2e1065" stroke="#7c3aed" stroke-width="2"/>
+  <text x="145" y="100" text-anchor="middle" font-size="48" font-family="serif" fill="#a78bfa">♥</text>
+  <text x="113" y="50" font-size="18" font-family="serif" fill="#c4b5fd" font-weight="bold">A</text>
+
+  <rect x="210" y="25" width="90" height="130" rx="10" fill="#2e1065" stroke="#7c3aed" stroke-width="2"/>
+  <text x="255" y="100" text-anchor="middle" font-size="48" font-family="serif" fill="#a78bfa">♠</text>
+  <text x="223" y="50" font-size="18" font-family="serif" fill="#c4b5fd" font-weight="bold">K</text>
+
+  <text x="200" y="178" text-anchor="middle" font-size="13" font-family="sans-serif" fill="#6d28d9" font-weight="bold" letter-spacing="3">BLACKJACK</text>
+</svg>

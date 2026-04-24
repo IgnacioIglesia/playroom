@@ -1,0 +1,14 @@
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="200" fill="#1e1b4b"/>
+  <rect x="130" y="35" width="140" height="130" rx="8" fill="#2e1065" stroke="#7c3aed" stroke-width="2"/>
+  <text x="155" y="65" text-anchor="middle" font-size="20" fill="#ef4444">💣</text>
+  <text x="185" y="65" text-anchor="middle" font-size="16" fill="#fbbf24">1</text>
+  <text x="215" y="65" text-anchor="middle" font-size="20" fill="#3b82f6">🚩</text>
+  <text x="245" y="65" text-anchor="middle" font-size="16" fill="#fbbf24">2</text>
+  <text x="155" y="100" text-anchor="middle" font-size="16" fill="#fbbf24">2</text>
+  <text x="185" y="100" text-anchor="middle" font-size="20" fill="#ef4444">💣</text>
+  <text x="215" y="100" text-anchor="middle" font-size="16" fill="#fbbf24">1</text>
+  <text x="155" y="140" text-anchor="middle" font-size="20" fill="#3b82f6">🚩</text>
+  <text x="215" y="140" text-anchor="middle" font-size="20" fill="#ef4444">💣</text>
+  <text x="200" y="180" text-anchor="middle" font-size="13" font-family="sans-serif" fill="#6d28d9" font-weight="bold" letter-spacing="3">BUSCAMINAS</text>
+</svg>

@@ -1,0 +1,17 @@
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="200" fill="#1e1b4b"/>
+  <circle cx="140" cy="80" r="35" fill="#2e1065" stroke="#7c3aed" stroke-width="2"/>
+  <rect x="115" y="115" width="50" height="50" rx="8" fill="#2e1065" stroke="#7c3aed" stroke-width="2"/>
+  <circle cx="128" cy="72" r="6" fill="#a78bfa"/>
+  <circle cx="152" cy="72" r="6" fill="#a78bfa"/>
+  <path d="M128 92 Q140 100 152 92" fill="none" stroke="#a78bfa" stroke-width="2"/>
+
+  <circle cx="260" cy="80" r="35" fill="#3b0764" stroke="#dc2626" stroke-width="2"/>
+  <rect x="235" y="115" width="50" height="50" rx="8" fill="#3b0764" stroke="#dc2626" stroke-width="2"/>
+  <circle cx="248" cy="72" r="6" fill="#f87171"/>
+  <circle cx="272" cy="72" r="6" fill="#f87171"/>
+  <path d="M248 96 Q260 88 272 96" fill="none" stroke="#f87171" stroke-width="2"/>
+  <text x="275" y="55" font-size="20" fill="#dc2626">!</text>
+
+  <text x="200" y="185" text-anchor="middle" font-size="13" font-family="sans-serif" fill="#6d28d9" font-weight="bold" letter-spacing="3">IMPOSTOR</text>
+</svg>

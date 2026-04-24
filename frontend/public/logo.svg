@@ -1,0 +1,36 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Fondo círculo -->
+  <circle cx="256" cy="256" r="256" fill="#111827"/>
+  <circle cx="256" cy="256" r="244" fill="#1f2937" stroke="#7c3aed" stroke-width="3"/>
+
+  <!-- Cuerpo del control -->
+  <rect x="166" y="210" width="180" height="104" rx="42" fill="#374151"/>
+  <ellipse cx="202" cy="262" rx="40" ry="32" fill="#2d3748"/>
+  <ellipse cx="310" cy="262" rx="40" ry="32" fill="#2d3748"/>
+
+  <!-- Cruz direccional -->
+  <rect x="182" y="256" width="40" height="14" rx="3" fill="#4b5563"/>
+  <rect x="196" y="242" width="14" height="40" rx="3" fill="#4b5563"/>
+
+  <!-- Botones -->
+  <circle cx="294" cy="250" r="9" fill="#7c3aed"/>
+  <circle cx="318" cy="262" r="9" fill="#4c1d95"/>
+  <circle cx="294" cy="274" r="9" fill="#5b21b6"/>
+  <circle cx="270" cy="262" r="9" fill="#6d28d9"/>
+
+  <!-- Botón start -->
+  <rect x="238" y="256" width="36" height="10" rx="5" fill="#4b5563"/>
+
+  <!-- Nombre PlayRoom -->
+  <text x="256" y="360" text-anchor="middle" font-size="52" font-weight="500"
+    font-family="Arial, sans-serif" fill="#a78bfa" letter-spacing="3">PlayRoom</text>
+
+  <!-- Separador -->
+  <rect x="106" y="374" width="300" height="2" rx="1" fill="#7c3aed" opacity="0.4"/>
+
+  <!-- Frase -->
+  <text x="256" y="400" text-anchor="middle" font-size="18" font-weight="400"
+    font-family="Arial, sans-serif" fill="#6b7280" letter-spacing="3">TU SALA DE JUEGOS VIRTUAL</text>
+
+</svg>
