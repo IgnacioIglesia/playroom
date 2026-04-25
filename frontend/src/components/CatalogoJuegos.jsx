@@ -30,15 +30,6 @@ const juegos = [
     ruta: null,
   },
   {
-    nombre: 'Blackjack',
-    imagen: '/juegos/blackjack.svg',
-    descripcion: 'Llegá a 21 sin pasarte. Jugá solo o con amigos.',
-    estado: 'Próximamente',
-    jugadores: '1-4',
-    categoria: 'Cartas',
-    ruta: null,
-  },
-  {
     nombre: 'Buscaminas',
     imagen: '/juegos/buscaminas.svg',
     descripcion: 'Descubrí las minas sin explotar. ¡Cuidado con los números!',
@@ -63,6 +54,15 @@ const juegos = [
     estado: 'Próximamente',
     jugadores: '4-10',
     categoria: 'Social',
+    ruta: null,
+  },
+  {
+    nombre: 'Poker',
+    imagen: '/juegos/poker.svg',
+    descripcion: 'Estrategia, paciencia y mente fría. ¿Tenés lo que se necesita?',
+    estado: 'Próximamente',
+    jugadores: '6',
+    categoria: 'Cartas',
     ruta: null,
   },
   {

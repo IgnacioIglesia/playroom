@@ -39,8 +39,8 @@ function Home() {
           {/* Stats */}
           <div className="flex gap-8 mt-4">
             {[
-              { valor: '5+', label: 'Juegos' },
-              { valor: '10', label: 'Jugadores por sala' },
+              { valor: '10+', label: 'Juegos' },
+              { valor: '6', label: 'Jugadores por sala' },
               { valor: '0', label: 'Descargas necesarias' },
             ].map((s) => (
               <div key={s.label} className="flex flex-col">

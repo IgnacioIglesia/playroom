@@ -10,6 +10,7 @@ import Registro from './pages/Registro'
 import Perfil from './pages/Perfil'
 import Truco from './pages/Truco/index.jsx'
 import TrucoOnline from './pages/Truco/TrucoOnline.jsx'
+import Ranking from './pages/Ranking.jsx'
 
 const socket = io('http://localhost:3001')
 
@@ -34,6 +35,7 @@ function App() {
       <Route path="/perfil" element={<Perfil />} />
       <Route path="/juegos/truco" element={<Truco />} />
       <Route path='/juegos/truco-online' element={<TrucoOnline socket={socket} />} />
+      <Route path="/ranking" element={<Ranking />} />
     </Routes>
   )
 }

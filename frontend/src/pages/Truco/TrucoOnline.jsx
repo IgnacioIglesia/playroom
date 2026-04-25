@@ -2,11 +2,13 @@ import { useState, useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
-import { CartaComp, CartaMuestra, BtnCanto, TanteadorPalillos } from './componentes'
 import { crearMazoConSeed, calcularEnvido, detectarFlor, ganadorMano, ganadorRonda, calcularValorFlor } from './logica'
 import { DELAY_MANO } from './constantes'
 import { useAuth } from '../../context/AuthContext'
 import MesaTruco from './MesaTruco'
+import { useNavigate } from 'react-router-dom'
+import { db } from '../../firebase'
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 
 const SOCKET_URL = 'https://playroom-backend.onrender.com'
 
@@ -79,6 +81,14 @@ export default function TrucoOnline() {
   const [nivelFlor, setNivelFlor] = useState(null) 
 
   const g = useRef({})
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (!usuario) {
+      navigate('/login', { state: { desde: '/juegos/truco-online' } })
+    }
+  }, [usuario])
+
   useEffect(() => {
 g.current = {
         cjJ, cjM, manoActual, resultados, muestra, manoJ, manoM,
@@ -187,6 +197,22 @@ g.current = {
     }
   }
 
+  const guardarPartida = async (ganadorFinal, pjFinal, pmFinal) => {
+    if (!usuario) return
+    try {
+      await addDoc(collection(db, 'ranking_truco'), {
+        uid: usuario.uid,
+        nombre: usuario.displayName || usuario.email?.split('@')[0] || 'Jugador',
+        resultado: ganadorFinal === 'jugador' ? 'victoria' : 'derrota',
+        puntosVos: pjFinal,
+        puntosRival: pmFinal,
+        fecha: serverTimestamp()
+      })
+    } catch (e) {
+      console.error('Error guardando partida:', e)
+    }
+  }
+  
   const terminarRonda = (gan, pjAct, pmAct, eManoAct) => {
     const gc = g.current
     let pj = pjAct, pm = pmAct
@@ -198,6 +224,12 @@ g.current = {
     }
     
     setPtsJ(pj); setPtsM(pm)
+  
+    // Guardar si es el final de la partida
+    if (pj >= gc.limite || pm >= gc.limite) {
+      guardarPartida(pj >= gc.limite ? 'jugador' : 'maquina', pj, pm)
+    }
+  
     if (revisarGanador(pj, pm)) return
   
     if (gc.rivalTieneFlor) {

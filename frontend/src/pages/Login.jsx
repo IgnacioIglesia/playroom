@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { auth, googleProvider } from '../firebase'
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
 
 export default function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const desde = location.state?.desde
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -16,7 +18,7 @@ export default function Login() {
     setError('')
     try {
       await signInWithEmailAndPassword(auth, email, password)
-      navigate('/')
+      navigate(desde || '/')
     } catch (err) {
       setError('Email o contraseña incorrectos.')
     }
@@ -28,7 +30,7 @@ export default function Login() {
     setError('')
     try {
       await signInWithPopup(auth, googleProvider)
-      navigate('/')
+      navigate(desde || '/')
     } catch (err) {
       setError('No se pudo iniciar sesión con Google.')
     }
@@ -70,6 +72,13 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center px-8 py-12">
         <div className="w-full max-w-md flex flex-col gap-6">
 
+          {/* Flecha volver */}
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition text-sm mb-4 self-start"
+          >
+            ← Volver al inicio
+          </button>
           <div className="md:hidden flex items-center gap-2 mb-2">
             <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">P</div>
             <span className="text-xl font-bold">Play<span className="text-purple-400">Room</span></span>
@@ -79,6 +88,12 @@ export default function Login() {
             <h1 className="text-3xl font-extrabold">Iniciar sesión</h1>
             <p className="text-gray-400 mt-1 text-sm">Bienvenido de vuelta a PlayRoom</p>
           </div>
+
+          {desde && (
+            <div className="bg-purple-950 border border-purple-700 text-purple-300 text-sm px-4 py-3 rounded-xl">
+              🔒 Necesitás iniciar sesión para jugar online
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-950 border border-red-700 text-red-400 text-sm px-4 py-3 rounded-xl">

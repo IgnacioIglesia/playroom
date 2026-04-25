@@ -63,6 +63,12 @@ function Navbar() {
         >
           Juegos
         </button>
+        <button
+          onClick={() => navigate('/ranking')}
+          className={`text-sm px-3 py-1.5 rounded-lg transition ${activo('/ranking') ? 'text-white font-semibold bg-white/5' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+        >
+          Ranking
+        </button>
       </div>
 
       {/* Derecha */}
