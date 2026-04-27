@@ -113,9 +113,9 @@ const juegos = [
   {
     nombre: 'Truco Online',
     imagen: '/juegos/truco.svg',
-    descripcion: 'Jugá al Truco contra un amigo online en tiempo real.',
+    descripcion: 'Jugá al Truco contra rivales online. Modalidades 1vs1 y 2vs2.',
     estado: 'Disponible',
-    jugadores: '2-6',
+    jugadores: '2-4',
     categoria: 'Cartas',
     ruta: '/juegos/truco-online',
   },

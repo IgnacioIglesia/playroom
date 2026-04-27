@@ -1,6 +1,4 @@
 import { Routes, Route } from 'react-router-dom'
-import { useEffect } from 'react'
-import { io } from 'socket.io-client'
 import Home from './pages/Home'
 import Games from './pages/Games'
 import Capitales from './pages/Capitales'
@@ -10,20 +8,12 @@ import Registro from './pages/Registro'
 import Perfil from './pages/Perfil'
 import Truco from './pages/Truco/index.jsx'
 import TrucoOnline from './pages/Truco/TrucoOnline.jsx'
+import TrucoOnline2v2 from './pages/Truco/TrucoOnline2v2'
+import TrucoOnlineSelector from './pages/Truco/TrucoOnlineSelector.jsx'
 import Ranking from './pages/Ranking.jsx'
-
-const socket = io('http://localhost:3001')
+import TrucoOnline3v3 from './pages/Truco/TrucoOnline3v3.jsx'
 
 function App() {
-  useEffect(() => {
-    socket.on('connect', () => console.log('Conectado:', socket.id))
-    socket.on('disconnect', () => console.log('Desconectado'))
-    return () => {
-      socket.off('connect')
-      socket.off('disconnect')
-    }
-  }, [])
-
   return (
     <Routes>
       <Route path="/" element={<Home />} />
@@ -34,7 +24,10 @@ function App() {
       <Route path="/registro" element={<Registro />} />
       <Route path="/perfil" element={<Perfil />} />
       <Route path="/juegos/truco" element={<Truco />} />
-      <Route path='/juegos/truco-online' element={<TrucoOnline socket={socket} />} />
+      <Route path="/juegos/truco-online" element={<TrucoOnlineSelector />} />
+      <Route path="/juegos/truco-online/1vs1" element={<TrucoOnline />} />
+      <Route path="/juegos/truco-online/2vs2" element={<TrucoOnline2v2 />} />
+      <Route path="/juegos/truco-online/3vs3" element={<TrucoOnline3v3 />} />
       <Route path="/ranking" element={<Ranking />} />
     </Routes>
   )

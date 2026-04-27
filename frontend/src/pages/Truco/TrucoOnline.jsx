@@ -10,7 +10,7 @@ import { useNavigate } from 'react-router-dom'
 import { db } from '../../firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 
-const SOCKET_URL = 'https://playroom-backend.onrender.com'
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001'
 
 export default function TrucoOnline() {
   const sockRef = useRef(null)
@@ -19,11 +19,12 @@ export default function TrucoOnline() {
   const [codigoSala, setCodigoSala]   = useState('')
   const [inputCodigo, setInputCodigo] = useState('')
   const [error, setError]             = useState('')
-  const [limite, setLimite] = useState(30)
+  const [limite, setLimite]           = useState(30)
   const [soyA, setSoyA]               = useState(false)
   const [conectado, setConectado]     = useState(false)
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false)
-  const [modalidad, setModalidad] = useState('1vs1')
+  const [modalidad, setModalidad]     = useState('1vs1')
+
   const [muestra, setMuestra]           = useState(null)
   const [manoJ, setManoJ]               = useState([])
   const [manoM, setManoM]               = useState([])
@@ -46,85 +47,89 @@ export default function TrucoOnline() {
   const [florResuelta, setFlorResuelta] = useState(true)
   const [envidoResuelto, setEnvidoResuelto] = useState(false)
 
-  const [trucoCantado, setTrucoCantado]   = useState(null)
+  const [trucoCantado, setTrucoCantado]     = useState(null)
   const [ultimoEnCantar, setUltimoEnCantar] = useState(null)
   const [cantanteOriginalTruco, setCantanteOriginalTruco] = useState(null)
-  const [trucoResuelto, setTrucoResuelto] = useState(false)
+  const [trucoResuelto, setTrucoResuelto]   = useState(false)
 
   const [esperandoRespuesta, setEsperandoRespuesta] = useState(false)
   const [trucoPendiente, setTrucoPendiente]         = useState(false)
   const [envidoPendiente, setEnvidoPendiente]       = useState(false)
   const [nivelEnvido, setNivelEnvido]               = useState(null)
-  const [envidoAcumulado, setEnvidoAcumulado] = useState(0)
+  const [envidoAcumulado, setEnvidoAcumulado]       = useState(0)
 
   const { usuario } = useAuth()
   const miNombre = usuario?.displayName || usuario?.email?.split('@')[0] || 'Jugador'
 
-
-  const [nombreRival, setNombreRival] = useState('Rival')
+  const [nombreRival, setNombreRival]     = useState('Rival')
   const [inicialesRival, setInicialesRival] = useState('RV')
-  const nombreRivalRef = useRef('Rival') 
+  const nombreRivalRef                    = useRef('Rival')
 
   const [florPendiente, setFlorPendiente] = useState(false)
-  const [florCantada, setFlorCantada] = useState(null)
-  
+  const [florCantada, setFlorCantada]     = useState(null)
   const [mostrarCartasRival, setMostrarCartasRival] = useState(false)
   const [rivalTieneFlor, setRivalTieneFlor] = useState(false)
+
+  const [florActiva, setFlorActiva]       = useState(false)
+  const [florEnJuego, setFlorEnJuego]     = useState(false)
+  const [florCantadaPor, setFlorCantadaPor] = useState(null)
+  const [nivelFlor, setNivelFlor]         = useState(null)
+
+  const [copied, setCopied]   = useState(false)
+  const [timeoutId, setTimeoutId] = useState(null)
+
+  const g        = useRef({})
+  const navigate = useNavigate()
 
   const puedeSubirEnvido      = envidoPendiente && nivelEnvido !== 'real' && nivelEnvido !== 'falta'
   const puedeSubirRealEnvido  = envidoPendiente && nivelEnvido !== 'falta'
   const puedeSubirFaltaEnvido = envidoPendiente
 
-  const [florActiva, setFlorActiva] = useState(false)
-  const [florEnJuego, setFlorEnJuego] = useState(false) 
-  const [florCantadaPor, setFlorCantadaPor] = useState(null) 
-  const [nivelFlor, setNivelFlor] = useState(null) 
-
-  const g = useRef({})
-  const navigate = useNavigate()
-
   useEffect(() => {
-    if (!usuario) {
-      navigate('/login', { state: { desde: '/juegos/truco-online' } })
-    }
+    if (!usuario) navigate('/login', { state: { desde: '/juegos/truco-online' } })
   }, [usuario])
 
   useEffect(() => {
-g.current = {
-        cjJ, cjM, manoActual, resultados, muestra, manoJ, manoM,
-        ptsJ, ptsM, esMano, trucoCantado, trucoResuelto,
-        florJ, florM, envidoResuelto, florResuelta, limite, soyA, nivelEnvido,
-        envidoAcumulado, mostrarCartasRival, rivalTieneFlor,
-      }
+    g.current = {
+      cjJ, cjM, manoActual, resultados, muestra, manoJ, manoM,
+      ptsJ, ptsM, esMano, trucoCantado, trucoResuelto,
+      florJ, florM, envidoResuelto, florResuelta, limite, soyA, nivelEnvido,
+      envidoAcumulado, mostrarCartasRival, rivalTieneFlor,
+    }
   })
 
   const addLog = msg => setLog(p => [msg, ...p].slice(0, 50))
 
+  const iniciarTimeout = (segundos = 30) => {
+    if (timeoutId) clearTimeout(timeoutId)
+    const id = setTimeout(() => {
+      if (esperandoRespuesta) {
+        addLog(`⏱ Tiempo agotado — +2 para vos`)
+        setPtsJ(p => p + 2)
+        setEsperandoRespuesta(false)
+        setTrucoResuelto(true)
+      }
+    }, segundos * 1000)
+    setTimeoutId(id)
+  }
+
+  const cancelarTimeout = () => {
+    if (timeoutId) clearTimeout(timeoutId)
+    setTimeoutId(null)
+  }
+
   const mostrarCartasRivalTemporalmente = () => {
     setMostrarCartasRival(true)
-    addLog(`🔍 Mostrando cartas de ${nombreRival} para verificar su Flor`)
-    
+    addLog(`🔍 Mostrando cartas de ${nombreRival}`)
     setTimeout(() => {
       setMostrarCartasRival(false)
-      addLog(`👁️ Cartas de ${nombreRival} ocultas nuevamente`)
+      addLog(`👁️ Cartas ocultas nuevamente`)
     }, 2000)
   }
 
   const revisarGanador = (pj, pm) => {
-    if (pj >= limite) {
-      setPtsJ(pj)
-      setPtsM(pm)
-      setGanador('yo')
-      setPantalla('resultado')
-      return true
-    }
-    if (pm >= limite) {
-      setPtsJ(pj)
-      setPtsM(pm)
-      setGanador('rival')
-      setPantalla('resultado')
-      return true
-    }
+    if (pj >= limite) { setPtsJ(pj); setPtsM(pm); setGanador('yo');    setPantalla('resultado'); return true }
+    if (pm >= limite) { setPtsJ(pj); setPtsM(pm); setGanador('rival'); setPantalla('resultado'); return true }
     return false
   }
 
@@ -134,9 +139,7 @@ g.current = {
     setTrucoCantado(null); setTrucoResuelto(false); setUltimoEnCantar(null); setCantanteOriginalTruco(null)
     setEnvidoResuelto(false); setMostrandoMano(false); setPrimeraJugada(false)
     setTrucoPendiente(false); setEnvidoPendiente(false)
-    setEsperandoRespuesta(false)
-    setNivelEnvido(null)
-    setEnvidoAcumulado(0)
+    setEsperandoRespuesta(false); setNivelEnvido(null); setEnvidoAcumulado(0)
     setMostrarCartasRival(false)
   }
 
@@ -147,50 +150,34 @@ g.current = {
     const mm   = jugadorA ? mazo.slice(4, 7) : mazo.slice(1, 4)
     const fj   = detectarFlor(mj, m)
     const fm   = detectarFlor(mm, m)
-  
-    setMuestra(m)
-    setManoJ(mj)
-    setManoM(mm)
-    setFlorJ(fj)
-    setFlorM(fm)
-    
-    // ✅ NUEVA LÓGICA: Solo si AMBOS tienen Flor, activar el juego de Flor
+
+    setMuestra(m); setManoJ(mj); setManoM(mm)
+    setFlorJ(fj); setFlorM(fm)
+
     if (fj && fm) {
-      setFlorActiva(true)      // Ambos tienen Flor - disponibles los botones
-      setFlorResuelta(false)    // Aún no se resuelve
-      setFlorEnJuego(false)     // Nadie ha cantado todavía
-      setFlorCantadaPor(null)
-      setNivelFlor(null)
-      setFlorPendiente(false)
-      addLog('⚘ ¡Ambos tienen Flor! Elegí una opción para apostar')
+      setFlorActiva(true); setFlorResuelta(false); setFlorEnJuego(false)
+      setFlorCantadaPor(null); setNivelFlor(null); setFlorPendiente(false)
+      addLog('⚘ ¡Ambos tienen Flor!')
     } else {
-      setFlorActiva(false)
-      setFlorResuelta(!fj && !fm)
-      setFlorEnJuego(false)
+      setFlorActiva(false); setFlorResuelta(!fj && !fm); setFlorEnJuego(false)
     }
-    
-    setEsMano(esEsMano)
-    setTurno(esEsMano ? 'yo' : 'rival')
+
+    setEsMano(esEsMano); setTurno(esEsMano ? 'yo' : 'rival')
     resetRonda()
-    
-    setMostrarCartasRival(false)
-    setRivalTieneFlor(fm)
-  
+    setMostrarCartasRival(false); setRivalTieneFlor(fm)
+
     addLog('─── Nueva ronda ───')
     addLog(`📋 Muestra: ${m.numero} de ${m.palo}`)
-    
     if (fj && !fm) addLog('🌸 Tenés Flor (automática +3)')
-    if (!fj && fm) addLog(`🌸 ${nombreRival} tiene Flor (automática +3 al final)`)
-    if (fj && fm) addLog('⚘ Ambos tienen Flor - Podés apostar')
-  
-    // Flor automática si solo uno tiene
+    if (!fj && fm) addLog(`🌸 ${nombreRival} tiene Flor`)
+    if (fj && fm)  addLog('⚘ Ambos tienen Flor')
+
     if (fj && !fm) {
       setTimeout(() => {
         const nuevo = pjActual + 3
         setPtsJ(nuevo)
-        addLog('🌸 Flor automática para vos — +3')
-        setFlorResuelta(true)
-        setFlorActiva(false)
+        addLog('🌸 Flor automática — +3')
+        setFlorResuelta(true); setFlorActiva(false)
         sockRef.current?.emit('accion', { tipo: 'flor_auto', datos: {} })
         revisarGanador(nuevo, pmActual)
       }, 800)
@@ -204,38 +191,24 @@ g.current = {
         uid: usuario.uid,
         nombre: usuario.displayName || usuario.email?.split('@')[0] || 'Jugador',
         resultado: ganadorFinal === 'jugador' ? 'victoria' : 'derrota',
-        puntosVos: pjFinal,
-        puntosRival: pmFinal,
+        puntosVos: pjFinal, puntosRival: pmFinal,
         fecha: serverTimestamp()
       })
-    } catch (e) {
-      console.error('Error guardando partida:', e)
-    }
+    } catch (e) { console.error('Error guardando partida:', e) }
   }
-  
+
   const terminarRonda = (gan, pjAct, pmAct, eManoAct) => {
     const gc = g.current
     let pj = pjAct, pm = pmAct
-    
     if (!gc.trucoResuelto) {
       const val = { truco: 2, retruco: 3, vale4: 4 }[gc.trucoCantado] || 1
       if (gan === 'jugador') { pj += val; addLog(`✅ Ganaste la ronda +${val}`) }
       else if (gan === 'maquina') { pm += val; addLog(`❌ ${nombreRival} ganó la ronda +${val}`) }
     }
-    
     setPtsJ(pj); setPtsM(pm)
-  
-    // Guardar si es el final de la partida
-    if (pj >= gc.limite || pm >= gc.limite) {
-      guardarPartida(pj >= gc.limite ? 'jugador' : 'maquina', pj, pm)
-    }
-  
+    if (pj >= gc.limite || pm >= gc.limite) guardarPartida(pj >= gc.limite ? 'jugador' : 'maquina', pj, pm)
     if (revisarGanador(pj, pm)) return
-  
-    if (gc.rivalTieneFlor) {
-      mostrarCartasRivalTemporalmente()
-    }
-  
+    if (gc.rivalTieneFlor) mostrarCartasRivalTemporalmente()
     setTimeout(() => {
       const nuevaEsMano = !eManoAct
       const sa = g.current.soyA
@@ -250,30 +223,21 @@ g.current = {
   const resolverMano = (cJ, cM, cjJAct, cjMAct, resAct, idx, muestraAct, mJAct, mMAct, pjAct, pmAct, eManoAct) => {
     const res = ganadorMano(cJ, cM, muestraAct)
     const nuevosRes = [...resAct, res]
-    setResultados(nuevosRes)
-    setMostrandoMano(true)
-  
+    setResultados(nuevosRes); setMostrandoMano(true)
     if (res === 'jugador')      addLog('✅ Ganaste la mano')
     else if (res === 'maquina') addLog('❌ Rival ganó la mano')
     else                        addLog('🤝 Empate en la mano')
-  
     setTimeout(() => {
       setMostrandoMano(false)
       const gan = ganadorRonda(nuevosRes, eManoAct ? 'jugador' : 'maquina')
       if (gan || nuevosRes.length === 3) {
-        // ✅ Mostrar cartas temporalmente si el rival tiene Flor
-        const gc = g.current
-        if (gc.rivalTieneFlor) {
-          mostrarCartasRivalTemporalmente()
-        }
+        if (g.current.rivalTieneFlor) mostrarCartasRivalTemporalmente()
         terminarRonda(gan || 'empate', pjAct, pmAct, eManoAct)
         return
       }
       const sig = idx + 1
       setManoActual(sig)
-      const quien = res === 'empate'
-        ? (eManoAct ? 'yo' : 'rival')
-        : (res === 'jugador' ? 'yo' : 'rival')
+      const quien = res === 'empate' ? (eManoAct ? 'yo' : 'rival') : (res === 'jugador' ? 'yo' : 'rival')
       setTurno(quien)
     }, DELAY_MANO)
   }
@@ -281,538 +245,282 @@ g.current = {
   const jugarCarta = carta => {
     const gc = g.current
     const nuevoCjJ = [...gc.cjJ, carta]
-    setCjJ(nuevoCjJ)
-    setCartaSel(null)
+    setCjJ(nuevoCjJ); setCartaSel(null)
     if (!primeraJugada) setPrimeraJugada(true)
     addLog(`🃏 Jugaste ${carta.numero} de ${carta.palo}`)
     sockRef.current?.emit('accion', { tipo: 'carta', datos: { carta } })
-
     if (gc.cjM.length > gc.manoActual) {
       resolverMano(carta, gc.cjM[gc.manoActual], nuevoCjJ, gc.cjM, gc.resultados,
         gc.manoActual, gc.muestra, gc.manoJ, gc.manoM, gc.ptsJ, gc.ptsM, gc.esMano)
-    } else {
-      setTurno('rival')
-    }
+    } else { setTurno('rival') }
   }
 
   const cantarTruco = nivel => {
-    if (trucoPendiente && (nivel === 'retruco' || nivel === 'vale4')) {
-      setTrucoPendiente(false)
-    }
+    if (trucoPendiente && (nivel === 'retruco' || nivel === 'vale4')) setTrucoPendiente(false)
     if (nivel === 'truco') setCantanteOriginalTruco('yo')
-    setTrucoCantado(nivel)
-    setUltimoEnCantar('yo')
-    setEsperandoRespuesta(true)
-    addLog(`🗣 Cantaste ${nivel}`)
+    setTrucoCantado(nivel); setUltimoEnCantar('yo'); setEsperandoRespuesta(true)
+    addLog(`🗣 Cantaste ${nivel === 'truco' ? 'Truco' : nivel === 'retruco' ? 'Retruco' : 'Vale Cuatro'}`)
     sockRef.current?.emit('accion', { tipo: 'truco', datos: { nivel } })
+    iniciarTimeout(30)
   }
 
   const responderTrucoQuiero = () => {
-    setTrucoPendiente(false)
-    setEsperandoRespuesta(false)
-    addLog(`✅ Querés ${trucoCantado}`)
+    setTrucoPendiente(false); setEsperandoRespuesta(false)
+    addLog(`✅ Aceptaste el ${trucoCantado}`)
     sockRef.current?.emit('accion', { tipo: 'resp_truco', datos: { acepto: true } })
   }
 
   const responderTrucoNoQuiero = () => {
     const gc = g.current
     const pts = { truco: 1, retruco: 2, vale4: 3 }[gc.trucoCantado] || 1
-    setTrucoPendiente(false)
-    setTrucoResuelto(true)
-    addLog(`❌ No querés — +${pts} para rival`)
+    setTrucoPendiente(false); setTrucoResuelto(true)
+    addLog(`❌ Rechazaste el ${gc.trucoCantado} — +${pts} para rival`)
     setPtsM(p => p + pts)
-    
-    if (gc.rivalTieneFlor) {
-      mostrarCartasRivalTemporalmente()
-    }
-    
+    if (gc.rivalTieneFlor) mostrarCartasRivalTemporalmente()
     sockRef.current?.emit('accion', { tipo: 'resp_truco', datos: { acepto: false } })
     setTimeout(() => terminarRonda('maquina', gc.ptsJ, gc.ptsM + pts, gc.esMano), 800)
   }
 
   const subirTruco = nivel => {
-    setTrucoPendiente(false)
-    setTrucoCantado(nivel)
-    setUltimoEnCantar('yo')
-    setEsperandoRespuesta(true)
+    setTrucoPendiente(false); setTrucoCantado(nivel); setUltimoEnCantar('yo'); setEsperandoRespuesta(true)
     addLog(`🗣 Subís a ${nivel}`)
     sockRef.current?.emit('accion', { tipo: 'truco', datos: { nivel } })
+    iniciarTimeout(30)
   }
 
   const cantarEnvido = (nivel) => {
     if (esperandoRespuesta) return
-    const pts = nivel === 'falta'
-      ? limite - Math.min(ptsJ, ptsM)
-      : nivel === 'real'
-        ? envidoAcumulado + 3
-        : envidoAcumulado + 2 
-  
-    setEnvidoAcumulado(pts)
-    setNivelEnvido(nivel)
-    setEsperandoRespuesta(true)
+    const pts = nivel === 'falta' ? limite - Math.min(ptsJ, ptsM) : nivel === 'real' ? envidoAcumulado + 3 : envidoAcumulado + 2
+    setEnvidoAcumulado(pts); setNivelEnvido(nivel); setEsperandoRespuesta(true)
     addLog(`Cantaste: ${nivel === 'real' ? 'Real Envido' : nivel === 'falta' ? 'Falta Envido' : 'Envido'} (vale ${pts})`)
     sockRef.current?.emit('accion', { tipo: 'envido', datos: { nivel, pts } })
-
+    iniciarTimeout(30)
   }
 
   const responderEnvidoQuiero = () => {
     const gc = g.current
-    const pts = gc.nivelEnvido === 'falta'
-      ? gc.limite - Math.min(gc.ptsJ, gc.ptsM)
-      : gc.envidoAcumulado
+    const pts = gc.nivelEnvido === 'falta' ? gc.limite - Math.min(gc.ptsJ, gc.ptsM) : gc.envidoAcumulado
     const ej = calcularEnvido(gc.manoJ, gc.muestra)
     const em = calcularEnvido(gc.manoM, gc.muestra)
-    addLog(`Tanto: vos ${ej} — rival ${em}`)
-    
+    addLog(`✅ Aceptaste — Tanto: vos ${ej} vs rival ${em}`)
     if (ej >= em) {
-      const nuevosPtsJ = gc.ptsJ + pts
-      setPtsJ(nuevosPtsJ)
-      addLog(`✅ +${pts} para vos`)
-      // Emitir resultado al rival
-      sockRef.current?.emit('accion', { 
-        tipo: 'resultado_envido', 
-        datos: { 
-          ptsJ: nuevosPtsJ, 
-          ptsM: gc.ptsM,
-          tantoJ: ej,
-          tantoM: em,
-          ganador: 'yo'
-        } 
-      })
+      setPtsJ(gc.ptsJ + pts); addLog(`✅ +${pts} para vos`)
+      sockRef.current?.emit('accion', { tipo: 'resultado_envido', datos: { ptsJ: gc.ptsJ + pts, ptsM: gc.ptsM, tantoJ: ej, tantoM: em, ganador: 'yo' } })
     } else {
-      const nuevosPtsM = gc.ptsM + pts
-      setPtsM(nuevosPtsM)
-      addLog(`❌ +${pts} para rival`)
-      sockRef.current?.emit('accion', { 
-        tipo: 'resultado_envido', 
-        datos: { 
-          ptsJ: gc.ptsJ, 
-          ptsM: nuevosPtsM,
-          tantoJ: ej,
-          tantoM: em,
-          ganador: 'rival'
-        } 
-      })
+      setPtsM(gc.ptsM + pts); addLog(`❌ +${pts} para rival`)
+      sockRef.current?.emit('accion', { tipo: 'resultado_envido', datos: { ptsJ: gc.ptsJ, ptsM: gc.ptsM + pts, tantoJ: ej, tantoM: em, ganador: 'rival' } })
     }
-    
-    setEnvidoResuelto(true)
-    setEnvidoPendiente(false)
+    setEnvidoResuelto(true); setEnvidoPendiente(false)
   }
 
   const responderEnvidoNoQuiero = () => {
     const gc = g.current
-    addLog('No querés — +1 para rival')
-    setPtsM(p => p + 1)
-    setEnvidoResuelto(true)
-    setEnvidoPendiente(false)
-    
-    if (gc.rivalTieneFlor) {
-      mostrarCartasRivalTemporalmente()
-    }
-    
+    addLog(`❌ Rechazaste el envido — +1 para rival`)
+    setPtsM(p => p + 1); setEnvidoResuelto(true); setEnvidoPendiente(false)
+    if (gc.rivalTieneFlor) mostrarCartasRivalTemporalmente()
     sockRef.current?.emit('accion', { tipo: 'resp_envido', datos: { acepto: false } })
   }
 
-  const declararFlor = () => {
+  const cantarFlor = (nivel) => {
+    if (esperandoRespuesta || florEnJuego) return
+    setNivelFlor(nivel); setFlorEnJuego(true); setFlorCantadaPor('yo'); setEsperandoRespuesta(true)
+    const pts = nivel === 'flor' ? 3 : nivel === 'conFlor' ? 6 : limite - Math.min(ptsJ, ptsM)
+    const nombreNivel = nivel === 'flor' ? 'La mía es Flor' : nivel === 'conFlor' ? 'Con Flor Envido' : 'Contra Flor al Resto'
+    addLog(`🌸 Cantaste: ${nombreNivel} (vale ${pts})`)
+    sockRef.current?.emit('accion', { tipo: 'flor_apuesta', datos: { nivel, pts } })
+    iniciarTimeout(30)
+  }
+
+  const responderFlorQuiero = () => {
     const gc = g.current
-    addLog('🌸 Declarás Flor')
-    sockRef.current?.emit('accion', { tipo: 'flor' })
-    const pts = 3
-    if (!gc.florM) {
-      setPtsJ(p => p + pts); addLog(`+${pts} para vos`)
-    } else {
-      const ej = calcularEnvido(gc.manoJ, gc.muestra)
-      const em = calcularEnvido(gc.manoM, gc.muestra)
-      addLog(`Flor: vos ${ej} — rival ${em}`)
-      if (ej >= em) { setPtsJ(p => p + pts); addLog(`+${pts} para vos`) }
-      else          { setPtsM(p => p + pts); addLog(`+${pts} para rival`) }
-    }
-    setFlorResuelta(true); setEnvidoResuelto(true)
+    const pts = nivelFlor === 'flor' ? 3 : nivelFlor === 'conFlor' ? 6 : limite - Math.min(gc.ptsJ, gc.ptsM)
+    const valorJ = calcularValorFlor(gc.manoJ, gc.muestra)
+    const valorM = calcularValorFlor(gc.manoM, gc.muestra)
+    addLog(`⚘ Flor: vos ${valorJ} — rival ${valorM}`)
+    if (valorJ >= valorM) { setPtsJ(gc.ptsJ + pts); addLog(`✅ +${pts} para vos`) }
+    else { setPtsM(gc.ptsM + pts); addLog(`❌ +${pts} para rival`) }
+    setFlorResuelta(true); setFlorActiva(false); setFlorEnJuego(false)
+    setFlorPendiente(false); setFlorCantadaPor(null); setNivelFlor(null)
+    setEnvidoResuelto(true); setEsperandoRespuesta(false)
+    sockRef.current?.emit('accion', { tipo: 'resultado_flor', datos: {
+      ptsJ: gc.ptsJ + (valorJ >= valorM ? pts : 0),
+      ptsM: gc.ptsM + (valorM > valorJ ? pts : 0),
+      ganador: valorJ >= valorM ? 'yo' : 'rival', pts
+    }})
+  }
+
+  const responderFlorNoQuiero = () => {
+    const pts = florCantada === 'flor' ? 1 : florCantada === 'conFlor' ? 3 : 5
+    addLog(`❌ No querés — +${pts} para rival`)
+    setPtsM(ptsM + pts)
+    setFlorResuelta(true); setFlorPendiente(false); setEnvidoResuelto(true); setEsperandoRespuesta(false)
+    sockRef.current?.emit('accion', { tipo: 'resultado_flor', datos: { ptsJ, ptsM: ptsM + pts, valorJ: 0, valorM: 0, ganador: 'rival', pts }})
   }
 
   const handleAccionRival = ({ tipo, datos }) => {
-    console.log('🔔 handleAccionRival:', tipo, datos)
     const gc = g.current
-  
+
     if (tipo === 'carta') {
-      const { carta } = datos
-      const nuevoCjM = [...gc.cjM, carta]
+      cancelarTimeout()
+      const nuevoCjM = [...gc.cjM, datos.carta]
       setCjM(nuevoCjM)
-      addLog(`🃏 ${nombreRivalRef.current} jugó ${carta.numero} de ${carta.palo}`)
+      addLog(`🃏 ${nombreRivalRef.current} jugó ${datos.carta.numero} de ${datos.carta.palo}`)
       if (gc.cjJ.length > gc.manoActual) {
-        resolverMano(gc.cjJ[gc.manoActual], carta, gc.cjJ, nuevoCjM, gc.resultados,
+        resolverMano(gc.cjJ[gc.manoActual], datos.carta, gc.cjJ, nuevoCjM, gc.resultados,
           gc.manoActual, gc.muestra, gc.manoJ, gc.manoM, gc.ptsJ, gc.ptsM, gc.esMano)
-      } else {
-        setTurno('yo')
-      }
+      } else { setTurno('yo') }
     }
-  
     else if (tipo === 'flor_auto') {
-      addLog(`🌸 ${nombreRivalRef.current} tiene Flor — +3 para rival`)
-      setPtsM(p => p + 3)
-      setFlorResuelta(true)
-      setEnvidoResuelto(true)
+      cancelarTimeout()
+      addLog(`🌸 ${nombreRivalRef.current} tiene Flor — +3`)
+      setPtsM(p => p + 3); setFlorResuelta(true); setEnvidoResuelto(true)
       revisarGanador(gc.ptsJ, gc.ptsM + 3)
     }
-  
     else if (tipo === 'flor_apuesta') {
+      cancelarTimeout()
       const { nivel, pts } = datos
-      setNivelFlor(nivel)
-      setFlorEnJuego(true)
-      setFlorCantadaPor('rival')
-      setFlorPendiente(true)
-      setEsperandoRespuesta(false)
-      
-      let nombreNivel = ''
-      if (nivel === 'flor') nombreNivel = 'La mía es Flor'
-      else if (nivel === 'conFlor') nombreNivel = 'Con Flor Envido'
-      else if (nivel === 'contraFlor') nombreNivel = 'Contra Flor al Resto'
-      
-      addLog(`🌸 ${nombreRivalRef.current} cantó: ${nombreNivel} (vale ${pts} puntos)`)
+      setNivelFlor(nivel); setFlorEnJuego(true); setFlorCantadaPor('rival'); setFlorPendiente(true); setEsperandoRespuesta(false)
+      const n = nivel === 'flor' ? 'La mía es Flor' : nivel === 'conFlor' ? 'Con Flor Envido' : 'Contra Flor al Resto'
+      addLog(`🌸 ${nombreRivalRef.current} cantó: ${n} (vale ${pts})`)
     }
-  
     else if (tipo === 'resultado_flor') {
-      const { ptsJ: nuevosPtsJ, ptsM: nuevosPtsM, valorJ, valorM, ganador, pts } = datos
-      setPtsJ(nuevosPtsJ)
-      setPtsM(nuevosPtsM)
-      setFlorResuelta(true)
-      setFlorPendiente(false)
-      setEnvidoResuelto(true)
-      setEsperandoRespuesta(false)
+      cancelarTimeout()
+      const { ptsJ: nJ, ptsM: nM, valorJ, valorM, ganador, pts } = datos
+      setPtsJ(nJ); setPtsM(nM)
+      setFlorResuelta(true); setFlorPendiente(false); setEnvidoResuelto(true); setEsperandoRespuesta(false)
       addLog(`⚘ Flor: vos ${valorJ} — rival ${valorM}`)
-      if (ganador === 'yo') {
-        addLog(`✅ +${pts} para vos`)
-      } else {
-        addLog(`❌ +${pts} para rival`)
-      }
-      revisarGanador(nuevosPtsJ, nuevosPtsM)
+      if (ganador === 'yo') addLog(`✅ +${pts} para vos`)
+      else addLog(`❌ +${pts} para rival`)
+      revisarGanador(nJ, nM)
     }
-  
     else if (tipo === 'resp_flor') {
-      setEsperandoRespuesta(false)
+      cancelarTimeout(); setEsperandoRespuesta(false)
       if (datos.acepto) {
-        const gc = g.current
         const valorJ = calcularValorFlor(gc.manoJ, gc.muestra)
         const valorM = calcularValorFlor(gc.manoM, gc.muestra)
-        let pts = florCantada === 'flor' ? 3 : florCantada === 'conFlor' ? 6 : limite - Math.min(gc.ptsJ, gc.ptsM)
-        
+        const pts = florCantada === 'flor' ? 3 : florCantada === 'conFlor' ? 6 : gc.limite - Math.min(gc.ptsJ, gc.ptsM)
         addLog(`⚘ Flor: vos ${valorJ} — rival ${valorM}`)
-        if (valorJ >= valorM) {
-          setPtsJ(p => p + pts)
-          addLog(`✅ +${pts} para vos`)
-        } else {
-          setPtsM(p => p + pts)
-          addLog(`❌ +${pts} para rival`)
-        }
+        if (valorJ >= valorM) { setPtsJ(p => p + pts); addLog(`✅ +${pts}`) }
+        else { setPtsM(p => p + pts); addLog(`❌ +${pts}`) }
       } else {
         const pts = florCantada === 'flor' ? 3 : florCantada === 'conFlor' ? 3 : 5
-        addLog(`+${pts} para vos (rival no quiso)`)
-        setPtsJ(p => p + pts)
+        addLog(`+${pts} para vos (rival no quiso)`); setPtsJ(p => p + pts)
       }
-      setFlorResuelta(true)
-      setFlorPendiente(false)
-      setEnvidoResuelto(true)
+      setFlorResuelta(true); setFlorPendiente(false); setEnvidoResuelto(true)
     }
-  
     else if (tipo === 'truco') {
-        const { nivel } = datos
-        if (gc.trucoPendiente) {
-          setTrucoPendiente(false)
-        }
-        if (nivel === 'truco') setCantanteOriginalTruco('rival')
-        setTrucoCantado(nivel)
-        setUltimoEnCantar('rival')
-        setEsperandoRespuesta(false)
-        setTrucoPendiente(true)
-        addLog(`🗣 ${nombreRivalRef.current} cantó ${nivel}`)
-      }
-  
+      cancelarTimeout()
+      const { nivel } = datos
+      if (gc.trucoPendiente) setTrucoPendiente(false)
+      if (nivel === 'truco') setCantanteOriginalTruco('rival')
+      setTrucoCantado(nivel); setUltimoEnCantar('rival'); setEsperandoRespuesta(false); setTrucoPendiente(true)
+      addLog(`🗣 ${nombreRivalRef.current} cantó ${nivel === 'truco' ? 'Truco' : nivel === 'retruco' ? 'Retruco' : 'Vale Cuatro'}`)
+    }
     else if (tipo === 'resp_truco') {
-        setEsperandoRespuesta(false)
-        if (datos.acepto) {
-            setEsperandoRespuesta(false) 
-            addLog(`✅ ${nombreRivalRef.current} quiere ${gc.trucoCantado}`)
-            setUltimoEnCantar('rival')
-          } else {
-          const pts = { truco: 1, retruco: 2, vale4: 3 }[gc.trucoCantado] || 1
-          addLog(`❌ ${nombreRivalRef.current} no quiere — +${pts} para vos`)
-          setPtsJ(p => p + pts)
-          setTrucoResuelto(true)
-          if (rivalTieneFlor) setMostrarCartasRival(true)
-          setTimeout(() => terminarRonda('jugador', gc.ptsJ + pts, gc.ptsM, gc.esMano), 800)
-        }
+      cancelarTimeout(); setEsperandoRespuesta(false)
+      if (datos.acepto) { addLog(`✅ ${nombreRivalRef.current} quiere ${gc.trucoCantado}`); setUltimoEnCantar('rival') }
+      else {
+        const pts = { truco: 1, retruco: 2, vale4: 3 }[gc.trucoCantado] || 1
+        addLog(`❌ ${nombreRivalRef.current} no quiere — +${pts} para vos`)
+        setPtsJ(p => p + pts); setTrucoResuelto(true)
+        if (rivalTieneFlor) setMostrarCartasRival(true)
+        setTimeout(() => terminarRonda('jugador', gc.ptsJ + pts, gc.ptsM, gc.esMano), 800)
       }
-  
+    }
     else if (tipo === 'envido') {
+      cancelarTimeout()
       const { nivel, pts } = datos
-      setNivelEnvido(nivel)
-      setEnvidoAcumulado(pts)
-      setEnvidoPendiente(true)
-      setEsperandoRespuesta(false)
-      addLog(`${nombreRivalRef.current} cantó: ${nivel === 'real' ? 'Real Envido' : nivel === 'falta' ? 'Falta Envido' : 'Envido'} (vale ${pts})`)
+      setNivelEnvido(nivel); setEnvidoAcumulado(pts); setEnvidoPendiente(true); setEsperandoRespuesta(false)
+      addLog(`🎴 ${nombreRivalRef.current} cantó ${nivel === 'real' ? 'Real Envido' : nivel === 'falta' ? 'Falta Envido' : 'Envido'} (vale ${pts})`)
     }
-  
     else if (tipo === 'resultado_envido') {
-      const { ptsJ: nuevosPtsJ, ptsM: nuevosPtsM, tantoJ, tantoM, ganador } = datos
-      setPtsJ(nuevosPtsJ)
-      setPtsM(nuevosPtsM)
-      setEnvidoResuelto(true)
-      setEnvidoPendiente(false)
-      setEsperandoRespuesta(false)
+      cancelarTimeout()
+      const { ptsJ: nJ, ptsM: nM, tantoJ, tantoM, ganador } = datos
+      setPtsJ(nJ); setPtsM(nM); setEnvidoResuelto(true); setEnvidoPendiente(false); setEsperandoRespuesta(false)
       addLog(`Tanto: vos ${tantoJ} — rival ${tantoM}`)
-      if (ganador === 'yo') {
-        addLog(`✅ +${nuevosPtsJ - gc.ptsJ} para vos`)
-      } else {
-        addLog(`❌ +${nuevosPtsM - gc.ptsM} para rival`)
-      }
-      revisarGanador(nuevosPtsJ, nuevosPtsM)
+      if (ganador === 'yo') addLog(`✅ +${nJ - gc.ptsJ} para vos`)
+      else addLog(`❌ +${nM - gc.ptsM} para rival`)
+      revisarGanador(nJ, nM)
     }
-  
     else if (tipo === 'resp_envido') {
-      setEsperandoRespuesta(false)
-      setEnvidoResuelto(true)
+      cancelarTimeout(); setEsperandoRespuesta(false); setEnvidoResuelto(true)
       if (datos.acepto) {
         const ej = calcularEnvido(gc.manoJ, gc.muestra)
         const em = calcularEnvido(gc.manoM, gc.muestra)
-        const pts = gc.nivelEnvido === 'falta' ? gc.limite - Math.min(gc.ptsJ, gc.ptsM)
-                  : gc.nivelEnvido === 'real'  ? 3
-                  : gc.nivelEnvido === 'ee'    ? 4 : 2
+        const pts = gc.nivelEnvido === 'falta' ? gc.limite - Math.min(gc.ptsJ, gc.ptsM) : gc.nivelEnvido === 'real' ? 3 : 2
         addLog(`Tanto: vos ${ej} — rival ${em}`)
-        if (ej >= em) { 
-          const nuevosPtsJ = gc.ptsJ + pts
-          setPtsJ(nuevosPtsJ)
-          addLog(`✅ +${pts} para vos`)
-        } else { 
-          const nuevosPtsM = gc.ptsM + pts
-          setPtsM(nuevosPtsM)
-          addLog(`❌ +${pts} para rival`)
-        }
-      } else {
-        const nuevosPtsJ = gc.ptsJ + 1
-        addLog('+1 para vos (rival no quiso)')
-        setPtsJ(nuevosPtsJ)
-      }
+        if (ej >= em) { setPtsJ(gc.ptsJ + pts); addLog(`✅ +${pts}`) }
+        else { setPtsM(gc.ptsM + pts); addLog(`❌ +${pts}`) }
+      } else { addLog(`+1 para vos`); setPtsJ(gc.ptsJ + 1) }
     }
-  
     else if (tipo === 'flor') {
+      cancelarTimeout()
       addLog(`🌸 ${nombreRivalRef.current} declara Flor`)
-      const pts = 3
-      if (!gc.florJ) {
-        setPtsM(p => p + pts)
-        addLog(`+${pts} para rival`)
-      } else {
+      if (!gc.florJ) { setPtsM(p => p + 3); addLog(`+3 para rival`) }
+      else {
         const valorJ = calcularValorFlor(gc.manoJ, gc.muestra)
         const valorM = calcularValorFlor(gc.manoM, gc.muestra)
         addLog(`⚘ Flor: vos ${valorJ} — rival ${valorM}`)
-        if (valorJ >= valorM) {
-          setPtsJ(p => p + pts)
-          addLog(`✅ +${pts} para vos`)
-        } else {
-          setPtsM(p => p + pts)
-          addLog(`❌ +${pts} para rival`)
-        }
+        if (valorJ >= valorM) { setPtsJ(p => p + 3); addLog(`✅ +3`) }
+        else { setPtsM(p => p + 3); addLog(`❌ +3`) }
       }
-      setFlorResuelta(true)
-      setEnvidoResuelto(true)
+      setFlorResuelta(true); setEnvidoResuelto(true)
     }
-  
     else if (tipo === 'nueva_ronda') {
+      cancelarTimeout()
       const { seed, manoA } = datos
       const sa = gc.soyA
-      const esEsMano = sa ? manoA : !manoA
-      repartir(seed, esEsMano, sa, gc.ptsJ, gc.ptsM)
+      repartir(seed, sa ? manoA : !manoA, sa, gc.ptsJ, gc.ptsM)
     }
-  }
-
-  const cantarFlor = (nivel) => {
-    // nivel: 'flor', 'conFlor', 'contraFlor'
-    if (esperandoRespuesta || florEnJuego) return
-    
-    setNivelFlor(nivel)
-    setFlorEnJuego(true)  // Se empieza a jugar la Flor
-    setFlorCantadaPor('yo')
-    setEsperandoRespuesta(true)
-    
-    let pts = 0
-    let nombreNivel = ''
-    
-    if (nivel === 'flor') {
-      pts = 3
-      nombreNivel = 'La mía es Flor'
-    } else if (nivel === 'conFlor') {
-      pts = 6
-      nombreNivel = 'Con Flor Envido'
-    } else if (nivel === 'contraFlor') {
-      pts = limite - Math.min(ptsJ, ptsM)
-      nombreNivel = 'Contra Flor al Resto'
-    }
-    
-    addLog(`🌸 Cantaste: ${nombreNivel} (vale ${pts} puntos)`)
-    
-    sockRef.current?.emit('accion', { 
-      tipo: 'flor_apuesta', 
-      datos: { nivel, pts } 
-    })
-  }
-  
-  const responderFlorQuiero = () => {
-    const gc = g.current
-    let pts = 0
-    
-    if (nivelFlor === 'flor') {
-      pts = 3
-    } else if (nivelFlor === 'conFlor') {
-      pts = 6
-    } else if (nivelFlor === 'contraFlor') {
-      pts = limite - Math.min(gc.ptsJ, gc.ptsM)
-    }
-    
-    const valorJ = calcularValorFlor(gc.manoJ, gc.muestra)
-    const valorM = calcularValorFlor(gc.manoM, gc.muestra)
-    
-    addLog(`⚘ Comparando Flor:`)
-    addLog(`   Vos: ${valorJ} puntos`)
-    addLog(`   ${nombreRival}: ${valorM} puntos`)
-    
-    if (valorJ >= valorM) {
-      const nuevosPtsJ = gc.ptsJ + pts
-      setPtsJ(nuevosPtsJ)
-      addLog(`✅ ¡Ganaste la Flor! +${pts} puntos`)
-    } else {
-      const nuevosPtsM = gc.ptsM + pts
-      setPtsM(nuevosPtsM)
-      addLog(`❌ Perdiste la Flor! +${pts} puntos para ${nombreRival}`)
-    }
-    
-    // Resetear estados de Flor
-    setFlorResuelta(true)
-    setFlorActiva(false)
-    setFlorEnJuego(false)
-    setFlorPendiente(false)
-    setFlorCantadaPor(null)
-    setNivelFlor(null)
-    setEnvidoResuelto(true)
-    setEsperandoRespuesta(false)
-    
-    sockRef.current?.emit('accion', { 
-      tipo: 'resultado_flor', 
-      datos: { 
-        ptsJ: gc.ptsJ + (valorJ >= valorM ? pts : 0),
-        ptsM: gc.ptsM + (valorM > valorJ ? pts : 0),
-        ganador: valorJ >= valorM ? 'yo' : 'rival',
-        pts
-      } 
-    })
-  }
-
-  const obtenerNombreFlor = (nivel) => {
-    switch(nivel) {
-      case 'flor': return 'Flor'
-      case 'conFlor': return 'Con Flor Envido'
-      case 'contraFlor': return 'Contra Flor al Resto'
-      default: return 'Flor'
-    }
-  }
-  
-  const responderFlorNoQuiero = () => {
-    let pts = 0
-    
-    if (florCantada === 'flor') {
-      pts = 1 
-      addLog(`❌ No querés Flor - +${pts} punto para ${nombreRival}`)
-    } else if (florCantada === 'conFlor') {
-      pts = 3  
-      addLog(`❌ No querés Con Flor Envido - +${pts} puntos para ${nombreRival}`)
-    } else if (florCantada === 'contraFlor') {
-      pts = 5 
-      addLog(`❌ No querés Contra Flor al Resto - +${pts} puntos para ${nombreRival}`)
-    }
-    
-    const nuevosPtsM = ptsM + pts
-    setPtsM(nuevosPtsM)
-    setFlorResuelta(true)
-    setFlorPendiente(false)
-    setEnvidoResuelto(true)
-    setEsperandoRespuesta(false)
-    
-    sockRef.current?.emit('accion', { 
-      tipo: 'resultado_flor', 
-      datos: { 
-        ptsJ: ptsJ, 
-        ptsM: nuevosPtsM,
-        valorJ: 0,
-        valorM: 0,
-        ganador: 'rival',
-        pts
-      } 
-    })
   }
 
   useEffect(() => {
     const socket = io(SOCKET_URL, { forceNew: true })
     sockRef.current = socket
-  
-    socket.on('connect', () => {
-      setConectado(true)
-    })
-    
+
+    socket.on('connect',    () => setConectado(true))
     socket.on('disconnect', () => setConectado(false))
-  
-    socket.on('sala_creada', ({ salaId }) => {
+
+    socket.on('sala_creada', ({ salaId, modalidad: mod }) => {
       setCodigoSala(salaId)
       setPantalla('esperando')
     })
-  
+
     socket.on('error_sala', msg => setError(msg))
-  
+
     socket.on('juego_iniciado', ({ seed, jugadorA, limite: limiteRecibido, jugadorAInfo, jugadorBInfo }) => {
-      console.log('🎮 juego_iniciado recibido:', { jugadorAInfo, jugadorBInfo })
-      
       const esA = socket.id === jugadorA
       setSoyA(esA)
       if (limiteRecibido) setLimite(limiteRecibido)
-      
       const infoRival = esA ? jugadorBInfo : jugadorAInfo
-      console.log('👤 Info rival:', infoRival)
-      
       if (infoRival) {
         setNombreRival(infoRival.nombre || 'Rival')
         setInicialesRival((infoRival.nombre || 'Rival').slice(0, 2).toUpperCase())
         nombreRivalRef.current = infoRival.nombre || 'Rival'
       }
-      
-      setPtsJ(0)
-      setPtsM(0)
-      setGanador(null)
-      setLog([])
+      setPtsJ(0); setPtsM(0); setGanador(null); setLog([])
       repartir(seed, esA, esA, 0, 0)
       setPantalla('juego')
       addLog('🎮 ¡Partida iniciada!')
     })
-  
+
     socket.on('accion_rival', handleAccionRival)
-  
+
     socket.on('rival_desconectado', () => {
       setError('El rival se desconectó')
       setPantalla('lobby')
     })
-  
-    // ✅ LISTENER PARA CONEXIÓN DUPLICADA
+
     socket.on('conexion_duplicada', (mensaje) => {
-      console.log('⚠️', mensaje)
-      alert(mensaje)
-      setError(mensaje)
-      setPantalla('lobby')
-      socket.disconnect()
+      alert(mensaje); setError(mensaje); setPantalla('lobby'); socket.disconnect()
     })
-  
+
     return () => socket.disconnect()
   }, [])
-  
+
   useEffect(() => {
     if (conectado && miNombre && sockRef.current) {
       const userId = usuario?.uid || usuario?.email || miNombre
-      console.log('📤 Enviando nombre y userId al servidor:', miNombre, userId)
       sockRef.current.emit('set_nombre', { nombre: miNombre, userId })
     }
   }, [conectado, miNombre, usuario])
@@ -820,155 +528,13 @@ g.current = {
   const resultadoUltimaMano = resultados[resultados.length - 1]
   const bloqueado           = mostrandoMano || esperandoRespuesta || trucoPendiente || envidoPendiente
   const puedeJugar          = turno === 'yo' && !bloqueado && florResuelta
-  const puedeEnvido = !envidoResuelto && !florJ && !florM && florResuelta && manoActual === 0 && !primeraJugada && !bloqueado
+  const puedeEnvido         = !envidoResuelto && !florJ && !florM && florResuelta && manoActual === 0 && !primeraJugada && !bloqueado
   const puedeTruco          = !trucoResuelto && florResuelta && !mostrandoMano && !esperandoRespuesta
   const puedeIniciarTruco   = puedeTruco && !trucoCantado && !trucoPendiente
-  const puedeRetruco        = puedeTruco && trucoCantado === 'truco'    && cantanteOriginalTruco === 'rival'
-  const puedeVale4          = puedeTruco && trucoCantado === 'retruco'  && cantanteOriginalTruco === 'yo'
+  const puedeRetruco        = puedeTruco && trucoCantado === 'truco'   && cantanteOriginalTruco === 'rival'
+  const puedeVale4          = puedeTruco && trucoCantado === 'retruco' && cantanteOriginalTruco === 'yo'
   const puedeIniciarRetruco = puedeTruco && !trucoPendiente && trucoCantado === 'truco'   && cantanteOriginalTruco === 'rival'
   const puedeIniciarVale4   = puedeTruco && !trucoPendiente && trucoCantado === 'retruco' && cantanteOriginalTruco === 'yo'
-
-// ── LOBBY ──
-if (pantalla === 'lobby') return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
-      <Navbar />
-      <div className="flex-1 flex items-center justify-center px-4 py-16">
-        
-        {/* Modal de crear sala */}
-        {modalCrearAbierto ? (
-          <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-3xl p-10 flex flex-col gap-6">
-            <div className="text-center">
-              <span className="text-5xl">🎮</span>
-              <h2 className="text-2xl font-extrabold mt-3">Crear Sala</h2>
-              <p className="text-gray-400 text-sm mt-1">Configurá tu partida</p>
-            </div>
-  
-            {/* Modalidad */}
-            <div>
-              <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 text-center">
-                Modalidad
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                {['1vs1', '2vs2', '3vs3'].map(m => (
-                  <button
-                    key={m}
-                    onClick={() => setModalidad(m)}
-                    className={`py-3 rounded-xl border-2 font-bold text-lg transition ${
-                      modalidad === m
-                        ? 'border-purple-500 bg-purple-950 text-white'
-                        : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-500'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-              {modalidad !== '1vs1' && (
-                <p className="text-yellow-400 text-xs text-center mt-2">
-                  ⚠️ Próximamente (solo 1vs1 disponible)
-                </p>
-              )}
-            </div>
-  
-            {/* Límite de puntos */}
-            <div>
-              <p className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3 text-center">
-                ¿Hasta cuántos puntos?
-              </p>
-              <div className="grid grid-cols-4 gap-3">
-                {[10, 20, 30, 40].map(l => (
-                  <button
-                    key={l}
-                    onClick={() => setLimite(l)}
-                    className={`py-3 rounded-xl border-2 font-bold text-lg transition ${
-                      limite === l
-                        ? 'border-purple-500 bg-purple-950 text-white'
-                        : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-500'
-                    }`}
-                  >
-                    {l}
-                  </button>
-                ))}
-              </div>
-            </div>
-  
-            {/* Botones */}
-            <button
-              onClick={() => {
-                setError('')
-                setModalCrearAbierto(false)
-                sockRef.current?.emit('crear_sala', { limite, modalidad })
-              }}
-              disabled={!conectado || modalidad !== '1vs1'}
-              className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white py-4 rounded-2xl text-lg font-bold transition"
-            >
-              Crear partida
-            </button>
-            
-            <button
-              onClick={() => setModalCrearAbierto(false)}
-              className="border border-gray-700 hover:border-gray-500 text-gray-400 hover:text-white py-3 rounded-2xl font-semibold transition"
-            >
-              ← Volver
-            </button>
-          </div>
-        ) : (
-          // Pantalla principal del lobby
-          <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-3xl p-10 flex flex-col gap-6">
-            <div className="text-center">
-              <span className="text-5xl">🌐</span>
-              <h1 className="text-3xl font-extrabold mt-3">Truco Online</h1>
-              <p className="text-gray-400 text-sm mt-1">1 vs 1 en tiempo real</p>
-            </div>
-  
-            <div className={`flex items-center justify-center gap-2 text-xs font-semibold ${conectado ? 'text-green-400' : 'text-red-400'}`}>
-              <span className={`w-2 h-2 rounded-full ${conectado ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`} />
-              {conectado ? 'Servidor conectado' : 'Conectando al servidor...'}
-            </div>
-  
-            {error && (
-              <p className="text-red-400 text-sm text-center bg-red-950 border border-red-800 rounded-xl px-4 py-2">{error}</p>
-            )}
-  
-            {/* Botón CREAR SALA grande */}
-            <button
-              onClick={() => setModalCrearAbierto(true)}
-              disabled={!conectado}
-              className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white py-6 rounded-2xl text-xl font-bold transition flex items-center justify-center gap-2"
-            >
-              <span>🎮</span> CREAR SALA
-            </button>
-  
-            {/* Separador */}
-            <div className="flex items-center gap-4">
-              <div className="flex-1 h-px bg-gray-700"></div>
-              <span className="text-gray-500 text-xs uppercase">O</span>
-              <div className="flex-1 h-px bg-gray-700"></div>
-            </div>
-  
-            {/* Unirse a sala */}
-            <div className="flex flex-col gap-3">
-              <input
-                value={inputCodigo}
-                onChange={e => setInputCodigo(e.target.value.toUpperCase())}
-                placeholder="Código de sala (ej: AB3X)"
-                maxLength={4}
-                className="bg-gray-800 border border-gray-700 rounded-xl px-4 py-4 text-white text-center text-xl font-mono tracking-widest focus:outline-none focus:border-purple-500 placeholder-gray-600"
-              />
-              <button
-                onClick={() => { setError(''); sockRef.current?.emit('unirse_sala', { salaId: inputCodigo }) }}
-                disabled={inputCodigo.length < 4 || !conectado}
-                className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white py-4 rounded-2xl text-lg font-bold transition"
-              >
-                Unirse a sala
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-      <Footer />
-    </div>
-  )
 
   // ── ESPERANDO ──
   if (pantalla === 'esperando') return (
@@ -976,15 +542,29 @@ if (pantalla === 'lobby') return (
       <Navbar />
       <div className="flex-1 flex items-center justify-center px-4">
         <div className="bg-gray-900 border border-gray-800 rounded-3xl p-10 max-w-sm w-full text-center flex flex-col gap-6">
-          <span className="text-5xl animate-pulse">⏳</span>
+          <div className="flex justify-center">
+            <div className="relative w-20 h-20">
+              <div className="absolute inset-0 rounded-full border-4 border-purple-900" />
+              <div className="absolute inset-0 rounded-full border-4 border-t-purple-500 animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center text-3xl">🃏</div>
+            </div>
+          </div>
           <div>
             <p className="text-gray-400 text-sm">Código de sala</p>
             <p className="text-5xl font-mono font-extrabold text-purple-400 tracking-widest mt-1">{codigoSala}</p>
           </div>
-          <p className="text-gray-500 text-sm">Compartí el código con tu rival y esperá que se conecte</p>
-          <button onClick={() => setPantalla('lobby')} className="text-gray-600 text-sm hover:text-gray-400 transition">
-            ← Cancelar
-          </button>
+          <div className="bg-gray-800 rounded-2xl p-4 flex flex-col gap-2">
+            <p className="text-gray-300 text-sm font-semibold">Compartí este código con tu rival</p>
+            <button onClick={() => { navigator.clipboard.writeText(codigoSala); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
+              className="bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-xl text-sm font-bold transition">
+              {copied ? '✅ Copiado!' : '📋 Copiar código'}
+            </button>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-gray-500 text-sm">
+            <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+            Esperando rival...
+          </div>
+          <button onClick={() => setPantalla('lobby')} className="text-gray-600 text-sm hover:text-gray-400 transition">← Cancelar</button>
         </div>
       </div>
       <Footer />
@@ -1002,21 +582,13 @@ if (pantalla === 'lobby') return (
             <span className="text-7xl">{gano ? '🏆' : '😔'}</span>
             <div>
               <h2 className="text-4xl font-extrabold">{gano ? '¡Ganaste!' : 'Perdiste'}</h2>
-              <p className="text-gray-400 mt-2">{gano ? '¡Sos un capo del Truco!' : 'El rival te ganó esta vez'}</p>
+              <p className="text-gray-400 mt-2">{gano ? '¡Sos un capo!' : 'El rival te ganó esta vez'}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-800 rounded-2xl p-4">
-                <p className="text-gray-400 text-xs">Vos</p>
-                <p className="text-3xl font-extrabold text-purple-400">{ptsJ}</p>
-              </div>
-              <div className="bg-gray-800 rounded-2xl p-4">
-                <p className="text-gray-400 text-xs">Rival</p>
-                <p className="text-3xl font-extrabold text-red-400">{ptsM}</p>
-              </div>
+              <div className="bg-gray-800 rounded-2xl p-4"><p className="text-gray-400 text-xs">Vos</p><p className="text-3xl font-extrabold text-purple-400">{ptsJ}</p></div>
+              <div className="bg-gray-800 rounded-2xl p-4"><p className="text-gray-400 text-xs">Rival</p><p className="text-3xl font-extrabold text-red-400">{ptsM}</p></div>
             </div>
-            <button onClick={() => setPantalla('lobby')} className="border-2 border-gray-700 hover:border-purple-500 text-gray-300 py-3 rounded-2xl font-semibold transition">
-              ← Volver al lobby
-            </button>
+            <button onClick={() => setPantalla('lobby')} className="border-2 border-gray-700 hover:border-purple-500 text-gray-300 py-3 rounded-2xl font-semibold transition">← Volver al lobby</button>
           </div>
         </div>
         <Footer />
@@ -1024,92 +596,140 @@ if (pantalla === 'lobby') return (
     )
   }
 
-// ── JUEGO ──
-return (
+  // ── LOBBY ──
+  if (pantalla === 'lobby') return (
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+      <Navbar />
+      <div className="flex-1 flex items-center justify-center px-4 py-16">
+        {modalCrearAbierto ? (
+          <div className="w-full max-w-lg bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-900/50 to-gray-900 px-8 py-8 border-b border-gray-800 text-center">
+              <span className="text-5xl">🎮</span>
+              <h2 className="text-2xl font-extrabold mt-3">Crear Sala</h2>
+              <p className="text-gray-400 text-sm mt-1">Configurá tu partida</p>
+            </div>
+            <div className="p-8 flex flex-col gap-6">
+              <div className="flex flex-col gap-3">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest text-center">¿Hasta cuántos puntos?</p>
+                <div className="grid grid-cols-4 gap-3">
+                  {[10, 20, 30, 40].map(l => (
+                    <button key={l} onClick={() => setLimite(l)}
+                      className={`py-4 rounded-xl border-2 font-bold text-lg transition ${limite === l ? 'border-purple-500 bg-purple-950 text-white' : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-500'}`}>
+                      {l}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-purple-900 rounded-lg flex items-center justify-center text-sm">👤</div>
+                  <div><p className="text-white text-sm font-semibold">{miNombre}</p><p className="text-gray-500 text-xs">Anfitrión</p></div>
+                </div>
+                <div className="text-right"><p className="text-purple-400 font-bold">1vs1</p><p className="text-gray-500 text-xs">hasta {limite} pts</p></div>
+              </div>
+              <button onClick={() => { setError(''); setModalCrearAbierto(false); sockRef.current?.emit('crear_sala', { limite, modalidad: '1vs1' }) }}
+                disabled={!conectado}
+                className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white py-4 rounded-2xl text-lg font-bold transition hover:scale-105">
+                Crear partida →
+              </button>
+              <button onClick={() => setModalCrearAbierto(false)}
+                className="border border-gray-700 hover:border-gray-500 text-gray-400 hover:text-white py-3 rounded-2xl font-semibold transition text-sm">
+                ← Volver
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full max-w-lg bg-gray-900 border border-gray-800 rounded-3xl overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-900/50 to-gray-900 px-8 py-8 border-b border-gray-800 text-center">
+              <span className="text-5xl">🃏</span>
+              <h1 className="text-3xl font-extrabold mt-3">Truco Online</h1>
+              <p className="text-gray-400 text-sm mt-1">Jugá en tiempo real contra tus amigos</p>
+              <div className={`flex items-center justify-center gap-2 text-xs font-semibold mt-3 ${conectado ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`w-2 h-2 rounded-full ${conectado ? 'bg-green-400' : 'bg-red-400 animate-pulse'}`} />
+                {conectado ? 'Servidor conectado' : 'Conectando...'}
+              </div>
+            </div>
+            <div className="p-8 flex flex-col gap-6">
+              {error && <p className="text-red-400 text-sm text-center bg-red-950 border border-red-800 rounded-xl px-4 py-3">{error}</p>}
+              <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center text-xl">🎮</div>
+                  <div><p className="font-bold text-white">Crear una sala</p><p className="text-gray-400 text-xs">Invitá a un amigo con el código</p></div>
+                </div>
+                <button onClick={() => setModalCrearAbierto(true)} disabled={!conectado}
+                  className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white py-3.5 rounded-2xl text-base font-bold transition hover:scale-105">
+                  Crear sala →
+                </button>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex-1 h-px bg-gray-700" />
+                <span className="text-gray-500 text-xs uppercase tracking-wider">o unite a una sala</span>
+                <div className="flex-1 h-px bg-gray-700" />
+              </div>
+              <div className="bg-gray-800/50 border border-gray-700 rounded-2xl p-6 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gray-700 rounded-xl flex items-center justify-center text-xl">🔑</div>
+                  <div><p className="font-bold text-white">Unirse a una sala</p><p className="text-gray-400 text-xs">Ingresá el código que te pasaron</p></div>
+                </div>
+                <input value={inputCodigo} onChange={e => setInputCodigo(e.target.value.toUpperCase())}
+                  placeholder="Ej: AB3X" maxLength={4}
+                  className="bg-gray-900 border border-gray-700 focus:border-purple-500 rounded-xl px-4 py-3 text-white text-center text-2xl font-mono tracking-widest focus:outline-none transition placeholder-gray-600" />
+                <button onClick={() => { setError(''); sockRef.current?.emit('unirse_sala', { salaId: inputCodigo }) }}
+                  disabled={inputCodigo.length < 4 || !conectado}
+                  className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-white py-3.5 rounded-2xl text-base font-bold transition">
+                  Unirse →
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-3 text-center">
+                {[{ icon: '⚡', texto: 'Tiempo real' }, { icon: '🆓', texto: 'Gratis' }, { icon: '🏆', texto: 'Con ranking' }].map(item => (
+                  <div key={item.texto} className="bg-gray-800/30 border border-gray-800 rounded-xl py-3 px-2">
+                    <span className="text-xl">{item.icon}</span>
+                    <p className="text-gray-400 text-xs mt-1">{item.texto}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+      <Footer />
+    </div>
+  )
+
+  // ── JUEGO ──
+  return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       <Navbar />
       <MesaTruco
-  // DATOS BÁSICOS
-  manoJ={manoJ} 
-  manoM={manoM} 
-  cjJ={cjJ} 
-  cjM={cjM}
-  muestra={muestra} 
-  resultados={resultados} 
-  manoActual={manoActual}
-  ptsJ={ptsJ} 
-  ptsM={ptsM} 
-  limite={limite}
-  turno={turno}
-  cartaSel={cartaSel} 
-  setCartaSel={setCartaSel}
-  log={log}
-  mostrandoMano={mostrandoMano}
-  
-  // TRUCO
-  trucoCantado={trucoCantado} 
-  ultimoEnCantar={ultimoEnCantar}
-  trucoPendiente={trucoPendiente} 
-  envidoPendiente={envidoPendiente}
-  trucoResuelto={trucoResuelto}
-  
-  // ENVIDO
-  nivelEnvido={nivelEnvido}
-  envidoResuelto={envidoResuelto}
-  
-  // FLOR - TODAS JUNTAS, CADA UNA UNA SOLA VEZ
-  florJ={florJ}
-  florM={florM}
-  florActiva={florActiva}
-  florEnJuego={florEnJuego}
-  florPendiente={florPendiente}    // ← UNA SOLA VEZ
-  florResuelta={florResuelta}      // ← UNA SOLA VEZ
-  florCantada={florCantada}
-  nivelFlor={nivelFlor}
-  florCantadaPor={florCantadaPor}
-  mostrarCartasRival={mostrarCartasRival}
-  
-  // OTROS ESTADOS
-  bloqueado={bloqueado}
-  
-  // FUNCIONES DE ACCIÓN
-  jugarCarta={jugarCarta}
-  cantarTruco={cantarTruco}
-  responderTrucoQuiero={responderTrucoQuiero}
-  responderTrucoNoQuiero={responderTrucoNoQuiero}
-  subirTruco={subirTruco}
-  cantarEnvido={cantarEnvido}
-  responderEnvidoQuiero={responderEnvidoQuiero}
-  responderEnvidoNoQuiero={responderEnvidoNoQuiero}
-  cantarFlor={cantarFlor}
-  responderFlorQuiero={responderFlorQuiero}
-  responderFlorNoQuiero={responderFlorNoQuiero}
-  
-  // BOOLEANOS DE CONTROL
-  puedeJugar={puedeJugar}
-  puedeEnvido={puedeEnvido}
-  puedeIniciarTruco={puedeIniciarTruco}
-  puedeRetruco={puedeRetruco}
-  puedeVale4={puedeVale4}
-  puedeIniciarRetruco={puedeIniciarRetruco}
-  puedeIniciarVale4={puedeIniciarVale4}
-  puedeSubirEnvido={puedeSubirEnvido}
-  puedeSubirRealEnvido={puedeSubirRealEnvido}
-  puedeSubirFaltaEnvido={puedeSubirFaltaEnvido}
-  
-  // NOMBRES
-  nombreRival={nombreRival}
-  inicialesRival={inicialesRival}
-  miNombre={miNombre}
-  miPhotoURL={usuario?.photoURL || ''}
-
-  // EXTRAS
-  resultadoUltimaMano={resultadoUltimaMano}
-  onSubirEnvidoConNivel={(nivel) => { 
-    setEnvidoPendiente(false)
-    cantarEnvido(nivel)
-  }}
-/>
+        manoJ={manoJ} manoM={manoM} cjJ={cjJ} cjM={cjM}
+        muestra={muestra} resultados={resultados} manoActual={manoActual}
+        ptsJ={ptsJ} ptsM={ptsM} limite={limite} turno={turno}
+        cartaSel={cartaSel} setCartaSel={setCartaSel} log={log}
+        mostrandoMano={mostrandoMano} trucoCantado={trucoCantado}
+        ultimoEnCantar={ultimoEnCantar} trucoPendiente={trucoPendiente}
+        envidoPendiente={envidoPendiente} trucoResuelto={trucoResuelto}
+        nivelEnvido={nivelEnvido} envidoResuelto={envidoResuelto}
+        florJ={florJ} florM={florM} florActiva={florActiva}
+        florEnJuego={florEnJuego} florPendiente={florPendiente}
+        florResuelta={florResuelta} florCantada={florCantada}
+        nivelFlor={nivelFlor} florCantadaPor={florCantadaPor}
+        mostrarCartasRival={mostrarCartasRival} bloqueado={bloqueado}
+        jugarCarta={jugarCarta} cantarTruco={cantarTruco}
+        responderTrucoQuiero={responderTrucoQuiero} responderTrucoNoQuiero={responderTrucoNoQuiero}
+        subirTruco={subirTruco} cantarEnvido={cantarEnvido}
+        responderEnvidoQuiero={responderEnvidoQuiero} responderEnvidoNoQuiero={responderEnvidoNoQuiero}
+        cantarFlor={cantarFlor} responderFlorQuiero={responderFlorQuiero}
+        responderFlorNoQuiero={responderFlorNoQuiero}
+        puedeJugar={puedeJugar} puedeEnvido={puedeEnvido}
+        puedeIniciarTruco={puedeIniciarTruco} puedeRetruco={puedeRetruco}
+        puedeVale4={puedeVale4} puedeIniciarRetruco={puedeIniciarRetruco}
+        puedeIniciarVale4={puedeIniciarVale4} puedeSubirEnvido={puedeSubirEnvido}
+        puedeSubirRealEnvido={puedeSubirRealEnvido} puedeSubirFaltaEnvido={puedeSubirFaltaEnvido}
+        nombreRival={nombreRival} inicialesRival={inicialesRival}
+        miNombre={miNombre} miPhotoURL={usuario?.photoURL || ''}
+        resultadoUltimaMano={resultadoUltimaMano}
+        onSubirEnvidoConNivel={(nivel) => { setEnvidoPendiente(false); cantarEnvido(nivel) }}
+      />
       <Footer />
     </div>
   )

@@ -101,19 +101,19 @@ export default function MesaTruco({
         </div>
 
         {/* Avatar rival */}
-        <div className="flex flex-col items-center gap-1">
-          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-red-900 border-2 border-red-600 flex items-center justify-center">
-            <span className="text-white font-extrabold text-base lg:text-lg">{inicialesRival}</span>
-          </div>
-          <span className="text-gray-400 text-xs font-semibold">{nombreRival}</span>
+        <div className="flex flex-col items-center gap-1" style={{ zIndex: 20, position: 'relative' }}>
+        <div className="w-12 h-12 rounded-full bg-red-900 border-2 border-red-600 flex items-center justify-center">
+          <span className="text-white font-extrabold text-lg">{inicialesRival}</span>
         </div>
+        <span className="text-gray-400 text-xs font-semibold">{nombreRival}</span>
+      </div>
 
         {/* Mesa + abanicos */}
         <div className="relative w-full max-w-xl">
 
           {/* Cartas rival en abanico */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/3"
-            style={{ width: '240px', height: '130px', zIndex: 10 }}>
+            style={{ width: '280px', height: '150px', zIndex: 10 }}>
             {manoM.map((c, i) => {
               const angulos  = [-15, 0, 15]
               const traslados = [-65, 0, 65]

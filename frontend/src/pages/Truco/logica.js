@@ -59,18 +59,31 @@ export function jerarquia(carta, muestra) {
 export function calcularEnvido(cartas, muestra) {
   const conVal = cartas.map(c => {
     const esBuena = c.palo === muestra.palo && MUESTRAS_ESPECIALES.includes(c.numero)
+    // El 12 del palo de la muestra toma valor de pieza si la muestra es especial
+    const es12Pieza = c.numero === 12 && c.palo === muestra.palo && MUESTRAS_ESPECIALES.includes(muestra.numero)
+
+    let val
+    if (esBuena) {
+      val = VALOR_MUESTRA_ENV[c.numero]
+    } else if (es12Pieza) {
+      val = VALOR_MUESTRA_ENV[muestra.numero] // toma el valor de la muestra
+    } else {
+      val = [1,2,3,4,5,6,7].includes(c.numero) ? c.numero : 0
+    }
+
     return {
       c,
-      val: esBuena
-        ? VALOR_MUESTRA_ENV[c.numero]
-        : [1,2,3,4,5,6,7].includes(c.numero) ? c.numero : 0,
-      esMuestra: esBuena
+      val,
+      esMuestra: esBuena || es12Pieza
     }
   })
+
   const muestras = conVal.filter(x => x.esMuestra).sort((a,b) => b.val - a.val)
   const normales = conVal.filter(x => !x.esMuestra).sort((a,b) => b.val - a.val)
+
   if (muestras.length >= 2) return muestras[0].val + muestras[1].val + (normales[0]?.val || 0)
   if (muestras.length === 1) return muestras[0].val + (normales[0]?.val || 0)
+
   const porPalo = {}
   for (const {c, val} of normales) {
     if (!porPalo[c.palo]) porPalo[c.palo] = []
