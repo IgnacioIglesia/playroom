@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { auth, googleProvider } from '../firebase'
-import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
+import { signInWithEmailAndPassword, signInWithRedirect, getRedirectResult } from 'firebase/auth'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -11,6 +11,16 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [cargando, setCargando] = useState(false)
+
+  useEffect(() => {
+    setCargando(true)
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) navigate(desde || '/')
+      })
+      .catch(() => setError('No se pudo iniciar sesión con Google.'))
+      .finally(() => setCargando(false))
+  }, [])
 
   const handleEmail = async (e) => {
     e.preventDefault()
@@ -26,15 +36,8 @@ export default function Login() {
   }
 
   const handleGoogle = async () => {
-    setCargando(true)
     setError('')
-    try {
-      await signInWithPopup(auth, googleProvider)
-      navigate(desde || '/')
-    } catch (err) {
-      setError('No se pudo iniciar sesión con Google.')
-    }
-    setCargando(false)
+    await signInWithRedirect(auth, googleProvider)
   }
 
   return (

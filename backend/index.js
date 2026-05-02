@@ -2,6 +2,7 @@ const express = require('express')
 const http = require('http')
 const { Server } = require('socket.io')
 const cors = require('cors')
+const { crearPartida, repartirNuevaRonda, procesarFlorInicial, procesarAccion, getEstadoParaSocket } = require('./trucoLogica')
 
 const app = express()
 app.use(cors())
@@ -16,6 +17,18 @@ const io = new Server(server, {
 
 const salas = {}
 const usuariosConectados = new Map()
+const trucoGames = {}
+
+function emitirEstadoTruco(salaId, partida, logA, logB) {
+  const sala = salas[salaId]
+  if (!sala) return
+  const estadoA = getEstadoParaSocket(partida, partida.socketA)
+  const estadoB = getEstadoParaSocket(partida, partida.socketB)
+  if (logA?.length) estadoA.logMsgs = logA
+  if (logB?.length) estadoB.logMsgs = logB
+  io.to(partida.socketA).emit('truco_estado', estadoA)
+  io.to(partida.socketB).emit('truco_estado', estadoB)
+}
 
 function generarCodigo() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -107,20 +120,24 @@ io.on('connection', (socket) => {
       sala.jugadores.push(jugador)
       sala.estado = 'jugando'
 
-      const seed = Math.floor(Math.random() * 2147483647)
       const jugadorA = sala.jugadores[0]
       const jugadorB = sala.jugadores[1]
 
       console.log(`🎮 1vs1 iniciado: ${jugadorA.nombre} vs ${jugadorB.nombre}`)
 
+      const partida = crearPartida(jugadorA.id, jugadorB.id, sala.limite, jugadorA.nombre, jugadorB.nombre)
+      trucoGames[salaId] = partida
+      const { logA, logB } = procesarFlorInicial(partida)
+
       io.to(salaId).emit('juego_iniciado', {
-        seed,
         jugadorA: jugadorA.id,
         limite: sala.limite,
         modalidad: sala.modalidad,
         jugadorAInfo: { id: jugadorA.id, nombre: jugadorA.nombre, userId: jugadorA.userId },
         jugadorBInfo: { id: jugadorB.id, nombre: jugadorB.nombre, userId: jugadorB.userId },
       })
+
+      emitirEstadoTruco(salaId, partida, logA, logB)
 
     } else if (sala.modalidad === '2vs2') {
       const totalJugadores = (sala.equipoA?.length || 0) + (sala.equipoB?.length || 0)
@@ -189,17 +206,48 @@ io.on('connection', (socket) => {
     if (salaId && salas[salaId]) {
       socket.to(salaId).emit('rival_desconectado', { motivo: 'salió voluntariamente' })
       delete salas[salaId]
+      delete trucoGames[salaId]
       socket.leave(salaId)
       socket.salaId = null
       socket.emit('sala_cerrada', { mensaje: 'Saliste de la sala' })
     }
   })
 
-  socket.on('accion', ({ tipo, datos }) => {
+  socket.on('truco_accion', ({ tipo, datos = {} }) => {
     const salaId = socket.salaId
     if (!salaId || !salas[salaId]) return
+    const partida = trucoGames[salaId]
+    if (!partida) return
+
     console.log(`🎲 [${salaId}] ${socket.nombre} → ${tipo}`)
-    socket.to(salaId).emit('accion_rival', { tipo, datos })
+    const result = procesarAccion(partida, socket.id, tipo, datos)
+
+    if (!result.ok) {
+      socket.emit('truco_error', result.error)
+      console.warn(`⚠️ [${salaId}] acción inválida "${tipo}": ${result.error}`)
+      return
+    }
+
+    emitirEstadoTruco(salaId, partida, result.logA, result.logB)
+
+    if (result.terminoRonda && !result.terminoPartida) {
+      setTimeout(() => {
+        if (!trucoGames[salaId]) return
+        partida.esManoA = !partida.esManoA
+        repartirNuevaRonda(partida)
+        const { logA, logB } = procesarFlorInicial(partida)
+        emitirEstadoTruco(salaId, partida, logA, logB)
+      }, 1800)
+    }
+  })
+
+  socket.on('chat_mensaje', ({ texto }) => {
+    if (!socket.salaId) return
+    const msg = texto?.trim()?.slice(0, 80)
+    if (!msg) return
+    console.log(`💬 [${socket.salaId}] ${socket.nombre}: ${msg}`)
+    socket.emit('chat_propio', { texto: msg })
+    socket.to(socket.salaId).emit('chat_recibido', { nombre: socket.nombre, texto: msg })
   })
 
   socket.on('ping', () => socket.emit('pong'))
@@ -216,6 +264,7 @@ io.on('connection', (socket) => {
         nombre: socket.nombre || 'Jugador'
       })
       delete salas[salaId]
+      delete trucoGames[salaId]
       console.log(`🧹 Sala ${salaId} eliminada`)
     }
   })

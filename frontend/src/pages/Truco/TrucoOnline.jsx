@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 import Navbar from '../../components/Navbar'
 import Footer from '../../components/Footer'
-import { crearMazoConSeed, calcularEnvido, detectarFlor, ganadorMano, ganadorRonda, calcularValorFlor } from './logica'
 import { DELAY_MANO } from './constantes'
 import { useAuth } from '../../context/AuthContext'
 import MesaTruco from './MesaTruco'
@@ -20,37 +19,36 @@ export default function TrucoOnline() {
   const [inputCodigo, setInputCodigo] = useState('')
   const [error, setError]             = useState('')
   const [limite, setLimite]           = useState(30)
-  const [soyA, setSoyA]               = useState(false)
   const [conectado, setConectado]     = useState(false)
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false)
-  const [modalidad, setModalidad]     = useState('1vs1')
 
-  const [muestra, setMuestra]           = useState(null)
-  const [manoJ, setManoJ]               = useState([])
-  const [manoM, setManoM]               = useState([])
-  const [cjJ, setCjJ]                   = useState([])
-  const [cjM, setCjM]                   = useState([])
-  const [resultados, setResultados]     = useState([])
-  const [manoActual, setManoActual]     = useState(0)
-  const [esMano, setEsMano]             = useState(false)
-  const [turno, setTurno]               = useState('rival')
-  const [cartaSel, setCartaSel]         = useState(null)
-  const [log, setLog]                   = useState([])
-  const [ptsJ, setPtsJ]                 = useState(0)
-  const [ptsM, setPtsM]                 = useState(0)
-  const [ganador, setGanador]           = useState(null)
+  // Game state — all set by truco_estado from server
+  const [muestra, setMuestra]             = useState(null)
+  const [manoJ, setManoJ]                 = useState([])
+  const [manoM, setManoM]                 = useState([])
+  const [cjJ, setCjJ]                     = useState([])
+  const [cjM, setCjM]                     = useState([])
+  const [resultados, setResultados]       = useState([])
+  const [manoActual, setManoActual]       = useState(0)
+  const [esMano, setEsMano]               = useState(false)
+  const [turno, setTurno]                 = useState('rival')
+  const [cartaSel, setCartaSel]           = useState(null)
+  const [log, setLog]                     = useState([])
+  const [ptsJ, setPtsJ]                   = useState(0)
+  const [ptsM, setPtsM]                   = useState(0)
+  const [ganador, setGanador]             = useState(null)
   const [mostrandoMano, setMostrandoMano] = useState(false)
   const [primeraJugada, setPrimeraJugada] = useState(false)
 
-  const [florJ, setFlorJ]               = useState(false)
-  const [florM, setFlorM]               = useState(false)
-  const [florResuelta, setFlorResuelta] = useState(true)
+  const [florJ, setFlorJ]                 = useState(false)
+  const [florM, setFlorM]                 = useState(false)
+  const [florResuelta, setFlorResuelta]   = useState(true)
   const [envidoResuelto, setEnvidoResuelto] = useState(false)
 
-  const [trucoCantado, setTrucoCantado]     = useState(null)
-  const [ultimoEnCantar, setUltimoEnCantar] = useState(null)
+  const [trucoCantado, setTrucoCantado]           = useState(null)
+  const [ultimoEnCantar, setUltimoEnCantar]       = useState(null)
   const [cantanteOriginalTruco, setCantanteOriginalTruco] = useState(null)
-  const [trucoResuelto, setTrucoResuelto]   = useState(false)
+  const [trucoResuelto, setTrucoResuelto]         = useState(false)
 
   const [esperandoRespuesta, setEsperandoRespuesta] = useState(false)
   const [trucoPendiente, setTrucoPendiente]         = useState(false)
@@ -63,25 +61,31 @@ export default function TrucoOnline() {
 
   const [nombreRival, setNombreRival]     = useState('Rival')
   const [inicialesRival, setInicialesRival] = useState('RV')
-  const nombreRivalRef                    = useRef('Rival')
 
-  const [florPendiente, setFlorPendiente] = useState(false)
-  const [florCantada, setFlorCantada]     = useState(null)
+  const [florPendiente, setFlorPendiente]   = useState(false)
+  const [florCantada, setFlorCantada]       = useState(null)
   const [mostrarCartasRival, setMostrarCartasRival] = useState(false)
   const [rivalTieneFlor, setRivalTieneFlor] = useState(false)
 
-  const [florActiva, setFlorActiva]       = useState(false)
-  const [florEnJuego, setFlorEnJuego]     = useState(false)
+  const [florActiva, setFlorActiva]         = useState(false)
+  const [florEnJuego, setFlorEnJuego]       = useState(false)
   const [florCantadaPor, setFlorCantadaPor] = useState(null)
-  const [nivelFlor, setNivelFlor]         = useState(null)
+  const [nivelFlor, setNivelFlor]           = useState(null)
 
-  const [copied, setCopied]   = useState(false)
-  const [timeoutId, setTimeoutId] = useState(null)
+  const [copied, setCopied]           = useState(false)
+  const [rondaTerminada, setRondaTerminada] = useState(false)
+  const [timerSeg, setTimerSeg]       = useState(30)
+  const [globoYo, setGloboYo]         = useState(null)
+  const [globoRival, setGloboRival]   = useState(null)
 
-  const g        = useRef({})
-  const navigate = useNavigate()
+  const prevResultadosLen = useRef(0)
+  const timerRef          = useRef(null)
+  const manoJRef          = useRef([])
+  const navigate          = useNavigate()
 
-  const puedeSubirEnvido      = envidoPendiente && nivelEnvido !== 'real' && nivelEnvido !== 'falta'
+  manoJRef.current = manoJ
+
+  const puedeSubirEnvido      = envidoPendiente && nivelEnvido !== 'falta'
   const puedeSubirRealEnvido  = envidoPendiente && nivelEnvido !== 'falta'
   const puedeSubirFaltaEnvido = envidoPendiente
 
@@ -89,99 +93,25 @@ export default function TrucoOnline() {
     if (!usuario) navigate('/login', { state: { desde: '/juegos/truco-online' } })
   }, [usuario])
 
+  // Detect new mano result → brief mostrandoMano UI state
+  // Reset counter when new round starts (resultados resets to [])
   useEffect(() => {
-    g.current = {
-      cjJ, cjM, manoActual, resultados, muestra, manoJ, manoM,
-      ptsJ, ptsM, esMano, trucoCantado, trucoResuelto,
-      florJ, florM, envidoResuelto, florResuelta, limite, soyA, nivelEnvido,
-      envidoAcumulado, mostrarCartasRival, rivalTieneFlor,
+    if (resultados.length === 0) {
+      prevResultadosLen.current = 0
+      setMostrandoMano(false)
+      return
     }
-  })
-
-  const addLog = msg => setLog(p => [msg, ...p].slice(0, 50))
-
-  const iniciarTimeout = (segundos = 30) => {
-    if (timeoutId) clearTimeout(timeoutId)
-    const id = setTimeout(() => {
-      if (esperandoRespuesta) {
-        addLog(`⏱ Tiempo agotado — +2 para vos`)
-        setPtsJ(p => p + 2)
-        setEsperandoRespuesta(false)
-        setTrucoResuelto(true)
-      }
-    }, segundos * 1000)
-    setTimeoutId(id)
-  }
-
-  const cancelarTimeout = () => {
-    if (timeoutId) clearTimeout(timeoutId)
-    setTimeoutId(null)
-  }
-
-  const mostrarCartasRivalTemporalmente = () => {
-    setMostrarCartasRival(true)
-    addLog(`🔍 Mostrando cartas de ${nombreRival}`)
-    setTimeout(() => {
-      setMostrarCartasRival(false)
-      addLog(`👁️ Cartas ocultas nuevamente`)
-    }, 2000)
-  }
-
-  const revisarGanador = (pj, pm) => {
-    if (pj >= limite) { setPtsJ(pj); setPtsM(pm); setGanador('yo');    setPantalla('resultado'); return true }
-    if (pm >= limite) { setPtsJ(pj); setPtsM(pm); setGanador('rival'); setPantalla('resultado'); return true }
-    return false
-  }
-
-  const resetRonda = () => {
-    setCjJ([]); setCjM([]); setResultados([])
-    setManoActual(0); setCartaSel(null)
-    setTrucoCantado(null); setTrucoResuelto(false); setUltimoEnCantar(null); setCantanteOriginalTruco(null)
-    setEnvidoResuelto(false); setMostrandoMano(false); setPrimeraJugada(false)
-    setTrucoPendiente(false); setEnvidoPendiente(false)
-    setEsperandoRespuesta(false); setNivelEnvido(null); setEnvidoAcumulado(0)
-    setMostrarCartasRival(false)
-  }
-
-  const repartir = (seed, esEsMano, jugadorA, pjActual = 0, pmActual = 0) => {
-    const mazo = crearMazoConSeed(seed)
-    const m    = mazo[0]
-    const mj   = jugadorA ? mazo.slice(1, 4) : mazo.slice(4, 7)
-    const mm   = jugadorA ? mazo.slice(4, 7) : mazo.slice(1, 4)
-    const fj   = detectarFlor(mj, m)
-    const fm   = detectarFlor(mm, m)
-
-    setMuestra(m); setManoJ(mj); setManoM(mm)
-    setFlorJ(fj); setFlorM(fm)
-
-    if (fj && fm) {
-      setFlorActiva(true); setFlorResuelta(false); setFlorEnJuego(false)
-      setFlorCantadaPor(null); setNivelFlor(null); setFlorPendiente(false)
-      addLog('⚘ ¡Ambos tienen Flor!')
-    } else {
-      setFlorActiva(false); setFlorResuelta(!fj && !fm); setFlorEnJuego(false)
+    if (resultados.length > prevResultadosLen.current) {
+      prevResultadosLen.current = resultados.length
+      setMostrandoMano(true)
+      const t = setTimeout(() => setMostrandoMano(false), DELAY_MANO)
+      return () => clearTimeout(t)
     }
+  }, [resultados.length])
 
-    setEsMano(esEsMano); setTurno(esEsMano ? 'yo' : 'rival')
-    resetRonda()
-    setMostrarCartasRival(false); setRivalTieneFlor(fm)
-
-    addLog('─── Nueva ronda ───')
-    addLog(`📋 Muestra: ${m.numero} de ${m.palo}`)
-    if (fj && !fm) addLog('🌸 Tenés Flor (automática +3)')
-    if (!fj && fm) addLog(`🌸 ${nombreRival} tiene Flor`)
-    if (fj && fm)  addLog('⚘ Ambos tienen Flor')
-
-    if (fj && !fm) {
-      setTimeout(() => {
-        const nuevo = pjActual + 3
-        setPtsJ(nuevo)
-        addLog('🌸 Flor automática — +3')
-        setFlorResuelta(true); setFlorActiva(false)
-        sockRef.current?.emit('accion', { tipo: 'flor_auto', datos: {} })
-        revisarGanador(nuevo, pmActual)
-      }, 800)
-    }
+  const addLog = msgs => {
+    if (!msgs?.length) return
+    setLog(p => [...[...msgs].reverse(), ...p].slice(0, 50))
   }
 
   const guardarPartida = async (ganadorFinal, pjFinal, pmFinal) => {
@@ -190,289 +120,64 @@ export default function TrucoOnline() {
       await addDoc(collection(db, 'ranking_truco'), {
         uid: usuario.uid,
         nombre: usuario.displayName || usuario.email?.split('@')[0] || 'Jugador',
-        resultado: ganadorFinal === 'jugador' ? 'victoria' : 'derrota',
+        resultado: ganadorFinal === 'yo' ? 'victoria' : 'derrota',
         puntosVos: pjFinal, puntosRival: pmFinal,
         fecha: serverTimestamp()
       })
     } catch (e) { console.error('Error guardando partida:', e) }
   }
 
-  const terminarRonda = (gan, pjAct, pmAct, eManoAct) => {
-    const gc = g.current
-    let pj = pjAct, pm = pmAct
-    if (!gc.trucoResuelto) {
-      const val = { truco: 2, retruco: 3, vale4: 4 }[gc.trucoCantado] || 1
-      if (gan === 'jugador') { pj += val; addLog(`✅ Ganaste la ronda +${val}`) }
-      else if (gan === 'maquina') { pm += val; addLog(`❌ ${nombreRival} ganó la ronda +${val}`) }
-    }
-    setPtsJ(pj); setPtsM(pm)
-    if (pj >= gc.limite || pm >= gc.limite) guardarPartida(pj >= gc.limite ? 'jugador' : 'maquina', pj, pm)
-    if (revisarGanador(pj, pm)) return
-    if (gc.rivalTieneFlor) mostrarCartasRivalTemporalmente()
-    setTimeout(() => {
-      const nuevaEsMano = !eManoAct
-      const sa = g.current.soyA
-      if (sa) {
-        const newSeed = Math.floor(Math.random() * 2147483647)
-        sockRef.current?.emit('accion', { tipo: 'nueva_ronda', datos: { seed: newSeed, manoA: nuevaEsMano } })
-        repartir(newSeed, nuevaEsMano, sa, pj, pm)
-      }
-    }, 1500)
-  }
+  const aplicarEstado = (estado) => {
+    setManoJ(estado.miMano)
+    // Show remaining rival cards face-down, or revealed cards face-up
+    setManoM(estado.manoRivalRevelada
+      ? estado.manoRivalRevelada
+      : Array(estado.manoRivalRestante).fill(null).map((_, i) => ({ id: `rival-facedown-${i}`, numero: null, palo: null }))
+    )
+    setCjJ(estado.cartasJugadasMias)
+    setCjM(estado.cartasJugadasRival)
+    setMuestra(estado.muestra)
+    setResultados(estado.resultados)
+    setManoActual(estado.manoActual)
+    setTurno(estado.turno)
+    setEsMano(estado.esMano)
+    setPtsJ(estado.ptsYo)
+    setPtsM(estado.ptsRival)
+    setLimite(estado.limite)
+    setFlorJ(estado.tengoFlor)
+    setFlorM(estado.rivalTieneFlor)
+    setRivalTieneFlor(estado.rivalTieneFlor)
+    setTrucoCantado(estado.trucoCantado)
+    setUltimoEnCantar(estado.ultimoEnCantar)
+    setCantanteOriginalTruco(estado.cantanteOriginalTruco)
+    setTrucoResuelto(estado.trucoResuelto)
+    setTrucoPendiente(estado.trucoPendiente)
+    setEsperandoRespuesta(estado.esperandoRespuesta)
+    setEnvidoResuelto(estado.envidoResuelto)
+    setEnvidoPendiente(estado.envidoPendiente)
+    setNivelEnvido(estado.nivelEnvido)
+    setEnvidoAcumulado(estado.envidoAcumulado)
+    setFlorResuelta(estado.florResuelta)
+    setFlorActiva(estado.florActiva)
+    setFlorEnJuego(estado.florEnJuego)
+    setFlorPendiente(estado.florPendiente)
+    setFlorCantada(estado.florCantadaPor)
+    setFlorCantadaPor(estado.florCantadaPor)
+    setNivelFlor(estado.nivelFlor)
+    setMostrarCartasRival(estado.mostrarCartasRival)
+    setPrimeraJugada(estado.primeraJugada)
+    setRondaTerminada(estado.rondaTerminada || false)
 
-  const resolverMano = (cJ, cM, cjJAct, cjMAct, resAct, idx, muestraAct, mJAct, mMAct, pjAct, pmAct, eManoAct) => {
-    const res = ganadorMano(cJ, cM, muestraAct)
-    const nuevosRes = [...resAct, res]
-    setResultados(nuevosRes); setMostrandoMano(true)
-    if (res === 'jugador')      addLog('✅ Ganaste la mano')
-    else if (res === 'maquina') addLog('❌ Rival ganó la mano')
-    else                        addLog('🤝 Empate en la mano')
-    setTimeout(() => {
-      setMostrandoMano(false)
-      const gan = ganadorRonda(nuevosRes, eManoAct ? 'jugador' : 'maquina')
-      if (gan || nuevosRes.length === 3) {
-        if (g.current.rivalTieneFlor) mostrarCartasRivalTemporalmente()
-        terminarRonda(gan || 'empate', pjAct, pmAct, eManoAct)
-        return
-      }
-      const sig = idx + 1
-      setManoActual(sig)
-      const quien = res === 'empate' ? (eManoAct ? 'yo' : 'rival') : (res === 'jugador' ? 'yo' : 'rival')
-      setTurno(quien)
-    }, DELAY_MANO)
-  }
+    if (estado.logMsgs?.length) addLog(estado.logMsgs)
 
-  const jugarCarta = carta => {
-    const gc = g.current
-    const nuevoCjJ = [...gc.cjJ, carta]
-    setCjJ(nuevoCjJ); setCartaSel(null)
-    if (!primeraJugada) setPrimeraJugada(true)
-    addLog(`🃏 Jugaste ${carta.numero} de ${carta.palo}`)
-    sockRef.current?.emit('accion', { tipo: 'carta', datos: { carta } })
-    if (gc.cjM.length > gc.manoActual) {
-      resolverMano(carta, gc.cjM[gc.manoActual], nuevoCjJ, gc.cjM, gc.resultados,
-        gc.manoActual, gc.muestra, gc.manoJ, gc.manoM, gc.ptsJ, gc.ptsM, gc.esMano)
-    } else { setTurno('rival') }
-  }
-
-  const cantarTruco = nivel => {
-    if (trucoPendiente && (nivel === 'retruco' || nivel === 'vale4')) setTrucoPendiente(false)
-    if (nivel === 'truco') setCantanteOriginalTruco('yo')
-    setTrucoCantado(nivel); setUltimoEnCantar('yo'); setEsperandoRespuesta(true)
-    addLog(`🗣 Cantaste ${nivel === 'truco' ? 'Truco' : nivel === 'retruco' ? 'Retruco' : 'Vale Cuatro'}`)
-    sockRef.current?.emit('accion', { tipo: 'truco', datos: { nivel } })
-    iniciarTimeout(30)
-  }
-
-  const responderTrucoQuiero = () => {
-    setTrucoPendiente(false); setEsperandoRespuesta(false)
-    addLog(`✅ Aceptaste el ${trucoCantado}`)
-    sockRef.current?.emit('accion', { tipo: 'resp_truco', datos: { acepto: true } })
-  }
-
-  const responderTrucoNoQuiero = () => {
-    const gc = g.current
-    const pts = { truco: 1, retruco: 2, vale4: 3 }[gc.trucoCantado] || 1
-    setTrucoPendiente(false); setTrucoResuelto(true)
-    addLog(`❌ Rechazaste el ${gc.trucoCantado} — +${pts} para rival`)
-    setPtsM(p => p + pts)
-    if (gc.rivalTieneFlor) mostrarCartasRivalTemporalmente()
-    sockRef.current?.emit('accion', { tipo: 'resp_truco', datos: { acepto: false } })
-    setTimeout(() => terminarRonda('maquina', gc.ptsJ, gc.ptsM + pts, gc.esMano), 800)
-  }
-
-  const subirTruco = nivel => {
-    setTrucoPendiente(false); setTrucoCantado(nivel); setUltimoEnCantar('yo'); setEsperandoRespuesta(true)
-    addLog(`🗣 Subís a ${nivel}`)
-    sockRef.current?.emit('accion', { tipo: 'truco', datos: { nivel } })
-    iniciarTimeout(30)
-  }
-
-  const cantarEnvido = (nivel) => {
-    if (esperandoRespuesta) return
-    const pts = nivel === 'falta' ? limite - Math.min(ptsJ, ptsM) : nivel === 'real' ? envidoAcumulado + 3 : envidoAcumulado + 2
-    setEnvidoAcumulado(pts); setNivelEnvido(nivel); setEsperandoRespuesta(true)
-    addLog(`Cantaste: ${nivel === 'real' ? 'Real Envido' : nivel === 'falta' ? 'Falta Envido' : 'Envido'} (vale ${pts})`)
-    sockRef.current?.emit('accion', { tipo: 'envido', datos: { nivel, pts } })
-    iniciarTimeout(30)
-  }
-
-  const responderEnvidoQuiero = () => {
-    const gc = g.current
-    const pts = gc.nivelEnvido === 'falta' ? gc.limite - Math.min(gc.ptsJ, gc.ptsM) : gc.envidoAcumulado
-    const ej = calcularEnvido(gc.manoJ, gc.muestra)
-    const em = calcularEnvido(gc.manoM, gc.muestra)
-    addLog(`✅ Aceptaste — Tanto: vos ${ej} vs rival ${em}`)
-    if (ej >= em) {
-      setPtsJ(gc.ptsJ + pts); addLog(`✅ +${pts} para vos`)
-      sockRef.current?.emit('accion', { tipo: 'resultado_envido', datos: { ptsJ: gc.ptsJ + pts, ptsM: gc.ptsM, tantoJ: ej, tantoM: em, ganador: 'yo' } })
-    } else {
-      setPtsM(gc.ptsM + pts); addLog(`❌ +${pts} para rival`)
-      sockRef.current?.emit('accion', { tipo: 'resultado_envido', datos: { ptsJ: gc.ptsJ, ptsM: gc.ptsM + pts, tantoJ: ej, tantoM: em, ganador: 'rival' } })
-    }
-    setEnvidoResuelto(true); setEnvidoPendiente(false)
-  }
-
-  const responderEnvidoNoQuiero = () => {
-    const gc = g.current
-    addLog(`❌ Rechazaste el envido — +1 para rival`)
-    setPtsM(p => p + 1); setEnvidoResuelto(true); setEnvidoPendiente(false)
-    if (gc.rivalTieneFlor) mostrarCartasRivalTemporalmente()
-    sockRef.current?.emit('accion', { tipo: 'resp_envido', datos: { acepto: false } })
-  }
-
-  const cantarFlor = (nivel) => {
-    if (esperandoRespuesta || florEnJuego) return
-    setNivelFlor(nivel); setFlorEnJuego(true); setFlorCantadaPor('yo'); setEsperandoRespuesta(true)
-    const pts = nivel === 'flor' ? 3 : nivel === 'conFlor' ? 6 : limite - Math.min(ptsJ, ptsM)
-    const nombreNivel = nivel === 'flor' ? 'La mía es Flor' : nivel === 'conFlor' ? 'Con Flor Envido' : 'Contra Flor al Resto'
-    addLog(`🌸 Cantaste: ${nombreNivel} (vale ${pts})`)
-    sockRef.current?.emit('accion', { tipo: 'flor_apuesta', datos: { nivel, pts } })
-    iniciarTimeout(30)
-  }
-
-  const responderFlorQuiero = () => {
-    const gc = g.current
-    const pts = nivelFlor === 'flor' ? 3 : nivelFlor === 'conFlor' ? 6 : limite - Math.min(gc.ptsJ, gc.ptsM)
-    const valorJ = calcularValorFlor(gc.manoJ, gc.muestra)
-    const valorM = calcularValorFlor(gc.manoM, gc.muestra)
-    addLog(`⚘ Flor: vos ${valorJ} — rival ${valorM}`)
-    if (valorJ >= valorM) { setPtsJ(gc.ptsJ + pts); addLog(`✅ +${pts} para vos`) }
-    else { setPtsM(gc.ptsM + pts); addLog(`❌ +${pts} para rival`) }
-    setFlorResuelta(true); setFlorActiva(false); setFlorEnJuego(false)
-    setFlorPendiente(false); setFlorCantadaPor(null); setNivelFlor(null)
-    setEnvidoResuelto(true); setEsperandoRespuesta(false)
-    sockRef.current?.emit('accion', { tipo: 'resultado_flor', datos: {
-      ptsJ: gc.ptsJ + (valorJ >= valorM ? pts : 0),
-      ptsM: gc.ptsM + (valorM > valorJ ? pts : 0),
-      ganador: valorJ >= valorM ? 'yo' : 'rival', pts
-    }})
-  }
-
-  const responderFlorNoQuiero = () => {
-    const pts = florCantada === 'flor' ? 1 : florCantada === 'conFlor' ? 3 : 5
-    addLog(`❌ No querés — +${pts} para rival`)
-    setPtsM(ptsM + pts)
-    setFlorResuelta(true); setFlorPendiente(false); setEnvidoResuelto(true); setEsperandoRespuesta(false)
-    sockRef.current?.emit('accion', { tipo: 'resultado_flor', datos: { ptsJ, ptsM: ptsM + pts, valorJ: 0, valorM: 0, ganador: 'rival', pts }})
-  }
-
-  const handleAccionRival = ({ tipo, datos }) => {
-    const gc = g.current
-
-    if (tipo === 'carta') {
-      cancelarTimeout()
-      const nuevoCjM = [...gc.cjM, datos.carta]
-      setCjM(nuevoCjM)
-      addLog(`🃏 ${nombreRivalRef.current} jugó ${datos.carta.numero} de ${datos.carta.palo}`)
-      if (gc.cjJ.length > gc.manoActual) {
-        resolverMano(gc.cjJ[gc.manoActual], datos.carta, gc.cjJ, nuevoCjM, gc.resultados,
-          gc.manoActual, gc.muestra, gc.manoJ, gc.manoM, gc.ptsJ, gc.ptsM, gc.esMano)
-      } else { setTurno('yo') }
-    }
-    else if (tipo === 'flor_auto') {
-      cancelarTimeout()
-      addLog(`🌸 ${nombreRivalRef.current} tiene Flor — +3`)
-      setPtsM(p => p + 3); setFlorResuelta(true); setEnvidoResuelto(true)
-      revisarGanador(gc.ptsJ, gc.ptsM + 3)
-    }
-    else if (tipo === 'flor_apuesta') {
-      cancelarTimeout()
-      const { nivel, pts } = datos
-      setNivelFlor(nivel); setFlorEnJuego(true); setFlorCantadaPor('rival'); setFlorPendiente(true); setEsperandoRespuesta(false)
-      const n = nivel === 'flor' ? 'La mía es Flor' : nivel === 'conFlor' ? 'Con Flor Envido' : 'Contra Flor al Resto'
-      addLog(`🌸 ${nombreRivalRef.current} cantó: ${n} (vale ${pts})`)
-    }
-    else if (tipo === 'resultado_flor') {
-      cancelarTimeout()
-      const { ptsJ: nJ, ptsM: nM, valorJ, valorM, ganador, pts } = datos
-      setPtsJ(nJ); setPtsM(nM)
-      setFlorResuelta(true); setFlorPendiente(false); setEnvidoResuelto(true); setEsperandoRespuesta(false)
-      addLog(`⚘ Flor: vos ${valorJ} — rival ${valorM}`)
-      if (ganador === 'yo') addLog(`✅ +${pts} para vos`)
-      else addLog(`❌ +${pts} para rival`)
-      revisarGanador(nJ, nM)
-    }
-    else if (tipo === 'resp_flor') {
-      cancelarTimeout(); setEsperandoRespuesta(false)
-      if (datos.acepto) {
-        const valorJ = calcularValorFlor(gc.manoJ, gc.muestra)
-        const valorM = calcularValorFlor(gc.manoM, gc.muestra)
-        const pts = florCantada === 'flor' ? 3 : florCantada === 'conFlor' ? 6 : gc.limite - Math.min(gc.ptsJ, gc.ptsM)
-        addLog(`⚘ Flor: vos ${valorJ} — rival ${valorM}`)
-        if (valorJ >= valorM) { setPtsJ(p => p + pts); addLog(`✅ +${pts}`) }
-        else { setPtsM(p => p + pts); addLog(`❌ +${pts}`) }
-      } else {
-        const pts = florCantada === 'flor' ? 3 : florCantada === 'conFlor' ? 3 : 5
-        addLog(`+${pts} para vos (rival no quiso)`); setPtsJ(p => p + pts)
-      }
-      setFlorResuelta(true); setFlorPendiente(false); setEnvidoResuelto(true)
-    }
-    else if (tipo === 'truco') {
-      cancelarTimeout()
-      const { nivel } = datos
-      if (gc.trucoPendiente) setTrucoPendiente(false)
-      if (nivel === 'truco') setCantanteOriginalTruco('rival')
-      setTrucoCantado(nivel); setUltimoEnCantar('rival'); setEsperandoRespuesta(false); setTrucoPendiente(true)
-      addLog(`🗣 ${nombreRivalRef.current} cantó ${nivel === 'truco' ? 'Truco' : nivel === 'retruco' ? 'Retruco' : 'Vale Cuatro'}`)
-    }
-    else if (tipo === 'resp_truco') {
-      cancelarTimeout(); setEsperandoRespuesta(false)
-      if (datos.acepto) { addLog(`✅ ${nombreRivalRef.current} quiere ${gc.trucoCantado}`); setUltimoEnCantar('rival') }
-      else {
-        const pts = { truco: 1, retruco: 2, vale4: 3 }[gc.trucoCantado] || 1
-        addLog(`❌ ${nombreRivalRef.current} no quiere — +${pts} para vos`)
-        setPtsJ(p => p + pts); setTrucoResuelto(true)
-        if (rivalTieneFlor) setMostrarCartasRival(true)
-        setTimeout(() => terminarRonda('jugador', gc.ptsJ + pts, gc.ptsM, gc.esMano), 800)
-      }
-    }
-    else if (tipo === 'envido') {
-      cancelarTimeout()
-      const { nivel, pts } = datos
-      setNivelEnvido(nivel); setEnvidoAcumulado(pts); setEnvidoPendiente(true); setEsperandoRespuesta(false)
-      addLog(`🎴 ${nombreRivalRef.current} cantó ${nivel === 'real' ? 'Real Envido' : nivel === 'falta' ? 'Falta Envido' : 'Envido'} (vale ${pts})`)
-    }
-    else if (tipo === 'resultado_envido') {
-      cancelarTimeout()
-      const { ptsJ: nJ, ptsM: nM, tantoJ, tantoM, ganador } = datos
-      setPtsJ(nJ); setPtsM(nM); setEnvidoResuelto(true); setEnvidoPendiente(false); setEsperandoRespuesta(false)
-      addLog(`Tanto: vos ${tantoJ} — rival ${tantoM}`)
-      if (ganador === 'yo') addLog(`✅ +${nJ - gc.ptsJ} para vos`)
-      else addLog(`❌ +${nM - gc.ptsM} para rival`)
-      revisarGanador(nJ, nM)
-    }
-    else if (tipo === 'resp_envido') {
-      cancelarTimeout(); setEsperandoRespuesta(false); setEnvidoResuelto(true)
-      if (datos.acepto) {
-        const ej = calcularEnvido(gc.manoJ, gc.muestra)
-        const em = calcularEnvido(gc.manoM, gc.muestra)
-        const pts = gc.nivelEnvido === 'falta' ? gc.limite - Math.min(gc.ptsJ, gc.ptsM) : gc.nivelEnvido === 'real' ? 3 : 2
-        addLog(`Tanto: vos ${ej} — rival ${em}`)
-        if (ej >= em) { setPtsJ(gc.ptsJ + pts); addLog(`✅ +${pts}`) }
-        else { setPtsM(gc.ptsM + pts); addLog(`❌ +${pts}`) }
-      } else { addLog(`+1 para vos`); setPtsJ(gc.ptsJ + 1) }
-    }
-    else if (tipo === 'flor') {
-      cancelarTimeout()
-      addLog(`🌸 ${nombreRivalRef.current} declara Flor`)
-      if (!gc.florJ) { setPtsM(p => p + 3); addLog(`+3 para rival`) }
-      else {
-        const valorJ = calcularValorFlor(gc.manoJ, gc.muestra)
-        const valorM = calcularValorFlor(gc.manoM, gc.muestra)
-        addLog(`⚘ Flor: vos ${valorJ} — rival ${valorM}`)
-        if (valorJ >= valorM) { setPtsJ(p => p + 3); addLog(`✅ +3`) }
-        else { setPtsM(p => p + 3); addLog(`❌ +3`) }
-      }
-      setFlorResuelta(true); setEnvidoResuelto(true)
-    }
-    else if (tipo === 'nueva_ronda') {
-      cancelarTimeout()
-      const { seed, manoA } = datos
-      const sa = gc.soyA
-      repartir(seed, sa ? manoA : !manoA, sa, gc.ptsJ, gc.ptsM)
+    if (estado.ganador) {
+      guardarPartida(estado.ganador, estado.ptsYo, estado.ptsRival)
+      setGanador(estado.ganador)
+      setPantalla('resultado')
     }
   }
+
+  const emit = (tipo, datos = {}) => sockRef.current?.emit('truco_accion', { tipo, datos })
 
   useEffect(() => {
     const socket = io(SOCKET_URL, { forceNew: true })
@@ -481,30 +186,36 @@ export default function TrucoOnline() {
     socket.on('connect',    () => setConectado(true))
     socket.on('disconnect', () => setConectado(false))
 
-    socket.on('sala_creada', ({ salaId, modalidad: mod }) => {
+    socket.on('sala_creada', ({ salaId }) => {
       setCodigoSala(salaId)
       setPantalla('esperando')
     })
 
     socket.on('error_sala', msg => setError(msg))
 
-    socket.on('juego_iniciado', ({ seed, jugadorA, limite: limiteRecibido, jugadorAInfo, jugadorBInfo }) => {
+    socket.on('juego_iniciado', ({ jugadorA, limite: limiteRecibido, jugadorAInfo, jugadorBInfo }) => {
       const esA = socket.id === jugadorA
-      setSoyA(esA)
       if (limiteRecibido) setLimite(limiteRecibido)
       const infoRival = esA ? jugadorBInfo : jugadorAInfo
       if (infoRival) {
         setNombreRival(infoRival.nombre || 'Rival')
         setInicialesRival((infoRival.nombre || 'Rival').slice(0, 2).toUpperCase())
-        nombreRivalRef.current = infoRival.nombre || 'Rival'
       }
       setPtsJ(0); setPtsM(0); setGanador(null); setLog([])
-      repartir(seed, esA, esA, 0, 0)
+      prevResultadosLen.current = 0
       setPantalla('juego')
-      addLog('🎮 ¡Partida iniciada!')
+      addLog(['🎮 ¡Partida iniciada!'])
     })
 
-    socket.on('accion_rival', handleAccionRival)
+    socket.on('truco_estado', aplicarEstado)
+
+    socket.on('truco_error', msg => console.warn('truco_error:', msg))
+
+    socket.on('chat_recibido', ({ nombre, texto }) => {
+      addLog([`💬 ${nombre}: ${texto}`])
+      setGloboRival(texto)
+      setTimeout(() => setGloboRival(null), 5000)
+    })
 
     socket.on('rival_desconectado', () => {
       setError('El rival se desconectó')
@@ -525,8 +236,49 @@ export default function TrucoOnline() {
     }
   }, [conectado, miNombre, usuario])
 
+  // ── Turn timer: 30s countdown when it's your turn to play ──
+  useEffect(() => {
+    clearInterval(timerRef.current)
+    const puedeJugarAhora = turno === 'yo' && florResuelta && !rondaTerminada &&
+      !mostrandoMano && !esperandoRespuesta && !trucoPendiente && !envidoPendiente && !florPendiente
+    if (!puedeJugarAhora) { setTimerSeg(30); return }
+
+    setTimerSeg(30)
+    timerRef.current = setInterval(() => {
+      setTimerSeg(prev => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current)
+          const carta = manoJRef.current.find(c => !c.id?.startsWith('rival'))
+          if (carta) emit('carta', { carta })
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(timerRef.current)
+  }, [turno, florResuelta, rondaTerminada, mostrandoMano, esperandoRespuesta, trucoPendiente, envidoPendiente, florPendiente])
+
+  // ── Action handlers — just forward to server ──
+  const jugarCarta        = carta => { clearInterval(timerRef.current); setTimerSeg(30); setCartaSel(null); emit('carta', { carta }) }
+  const cantarTruco       = nivel => emit(nivel)
+  const subirTruco        = nivel => emit(nivel)
+  const responderTrucoQuiero   = () => emit('quiero_truco')
+  const responderTrucoNoQuiero = () => emit('no_quiero_truco')
+  const cantarEnvido      = nivel => emit(nivel)
+  const responderEnvidoQuiero   = () => emit('quiero_envido')
+  const responderEnvidoNoQuiero = () => emit('no_quiero_envido')
+  const cantarFlor        = nivel => emit(nivel)
+  const responderFlorQuiero   = () => emit('quiero_flor')
+  const responderFlorNoQuiero = () => emit('no_quiero_flor')
+  const enviarMensaje = texto => {
+    addLog([`💬 Vos: ${texto}`])
+    setGloboYo(texto)
+    setTimeout(() => setGloboYo(null), 5000)
+    sockRef.current?.emit('chat_mensaje', { texto })
+  }
+
   const resultadoUltimaMano = resultados[resultados.length - 1]
-  const bloqueado           = mostrandoMano || esperandoRespuesta || trucoPendiente || envidoPendiente
+  const bloqueado           = rondaTerminada || mostrandoMano || esperandoRespuesta || trucoPendiente || envidoPendiente
   const puedeJugar          = turno === 'yo' && !bloqueado && florResuelta
   const puedeEnvido         = !envidoResuelto && !florJ && !florM && florResuelta && manoActual === 0 && !primeraJugada && !bloqueado
   const puedeTruco          = !trucoResuelto && florResuelta && !mostrandoMano && !esperandoRespuesta
@@ -728,6 +480,9 @@ export default function TrucoOnline() {
         nombreRival={nombreRival} inicialesRival={inicialesRival}
         miNombre={miNombre} miPhotoURL={usuario?.photoURL || ''}
         resultadoUltimaMano={resultadoUltimaMano}
+        rondaTerminada={rondaTerminada} timerSeg={timerSeg}
+        globoYo={globoYo} globoRival={globoRival}
+        onEnviarMensaje={enviarMensaje}
         onSubirEnvidoConNivel={(nivel) => { setEnvidoPendiente(false); cantarEnvido(nivel) }}
       />
       <Footer />
