@@ -2,10 +2,30 @@ const express = require('express')
 const http = require('http')
 const { Server } = require('socket.io')
 const cors = require('cors')
-const { crearPartida, repartirNuevaRonda, procesarFlorInicial, procesarAccion, getEstadoParaSocket } = require('./trucoLogica')
+const {
+  crearPartida, repartirNuevaRonda, procesarFlorInicial, procesarAccion, getEstadoParaSocket,
+  crearPartida2v2, repartirNuevaRonda2v2, procesarFlorInicial2v2, procesarAccion2v2, getEstadoParaSocket2v2,
+} = require('./trucoLogica')
 
 const app = express()
 app.use(cors())
+app.use(express.json())
+
+app.post('/verify-recaptcha', async (req, res) => {
+  const { token } = req.body
+  if (!token) return res.json({ success: false })
+  const secret = process.env.RECAPTCHA_SECRET
+  try {
+    const r = await fetch(
+      `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${token}`,
+      { method: 'POST' }
+    )
+    const data = await r.json()
+    res.json({ success: data.success })
+  } catch {
+    res.json({ success: false })
+  }
+})
 
 const server = http.createServer(app)
 const io = new Server(server, {
@@ -28,6 +48,16 @@ function emitirEstadoTruco(salaId, partida, logA, logB) {
   if (logB?.length) estadoB.logMsgs = logB
   io.to(partida.socketA).emit('truco_estado', estadoA)
   io.to(partida.socketB).emit('truco_estado', estadoB)
+}
+
+function emitirEstado2v2(salaId, partida, logs) {
+  const sala = salas[salaId]
+  if (!sala) return
+  for (const sid of partida.sockets) {
+    const estado = getEstadoParaSocket2v2(partida, sid)
+    if (logs?.[sid]?.length) estado.logMsgs = logs[sid]
+    io.to(sid).emit('truco_estado', estado)
+  }
 }
 
 function generarCodigo() {
@@ -191,14 +221,16 @@ io.on('connection', (socket) => {
 
     if (sala.equipoA.length === 2 && sala.equipoB.length === 2) {
       sala.estado = 'jugando'
-      const seed = Math.floor(Math.random() * 2147483647)
       console.log(`🎮 2vs2 iniciado en sala ${salaId}!`)
+      const partida = crearPartida2v2(sala.equipoA, sala.equipoB, sala.limite)
+      trucoGames[salaId] = partida
+      const logs = procesarFlorInicial2v2(partida)
       io.to(salaId).emit('juego_iniciado_2v2', {
-        seed,
         limite: sala.limite,
         equipoA: sala.equipoA,
         equipoB: sala.equipoB,
       })
+      emitirEstado2v2(salaId, partida, logs)
     }
   })
 
@@ -221,6 +253,27 @@ io.on('connection', (socket) => {
     if (!partida) return
 
     console.log(`🎲 [${salaId}] ${socket.nombre} → ${tipo}`)
+
+    if (partida.modalidad === '2v2') {
+      const result = procesarAccion2v2(partida, socket.id, tipo, datos)
+      if (!result.ok) {
+        socket.emit('truco_error', result.error)
+        console.warn(`⚠️ [${salaId}] acción inválida "${tipo}": ${result.error}`)
+        return
+      }
+      emitirEstado2v2(salaId, partida, result.logs)
+      if (result.terminoRonda && !result.terminoPartida) {
+        setTimeout(() => {
+          if (!trucoGames[salaId]) return
+          partida.manoIdx = (partida.manoIdx + 1) % 4
+          repartirNuevaRonda2v2(partida)
+          const logs = procesarFlorInicial2v2(partida)
+          emitirEstado2v2(salaId, partida, logs)
+        }, 1800)
+      }
+      return
+    }
+
     const result = procesarAccion(partida, socket.id, tipo, datos)
 
     if (!result.ok) {

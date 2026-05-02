@@ -7,11 +7,10 @@ export default function Login() {
   const navigate = useNavigate()
   const location = useLocation()
   const desde = location.state?.desde
-  const [email, setEmail] = useState('')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError]       = useState('')
   const [cargando, setCargando] = useState(false)
-
 
   const handleEmail = async (e) => {
     e.preventDefault()
@@ -20,7 +19,7 @@ export default function Login() {
     try {
       await signInWithEmailAndPassword(auth, email, password)
       navigate(desde || '/')
-    } catch (err) {
+    } catch {
       setError('Email o contraseña incorrectos.')
     }
     setCargando(false)
@@ -75,7 +74,6 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center px-8 py-12">
         <div className="w-full max-w-md flex flex-col gap-6">
 
-          {/* Flecha volver */}
           <button
             onClick={() => navigate('/')}
             className="flex items-center gap-2 text-gray-500 hover:text-gray-300 transition text-sm mb-4 self-start"
@@ -107,7 +105,7 @@ export default function Login() {
           <button
             onClick={handleGoogle}
             disabled={cargando}
-            className="w-full flex items-center justify-center gap-3 border-2 border-gray-700 hover:border-purple-500 bg-gray-900 hover:bg-gray-800 text-white py-3.5 rounded-2xl font-semibold transition text-sm"
+            className="w-full flex items-center justify-center gap-3 border-2 border-gray-700 hover:border-purple-500 bg-gray-900 hover:bg-gray-800 text-white py-3.5 rounded-2xl font-semibold transition text-sm disabled:opacity-50"
           >
             <img src="https://www.google.com/favicon.ico" className="w-4 h-4" />
             Continuar con Google

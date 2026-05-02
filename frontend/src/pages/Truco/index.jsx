@@ -281,27 +281,44 @@ export default function Truco() {
 
   // MENÚ
   if (pantalla === 'menu') return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <div className="min-h-screen bg-[#07070f] text-white flex flex-col">
       <Navbar />
-      <div className="flex-1 flex items-center justify-center px-4 py-16">
-        <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-3xl p-10 flex flex-col gap-8">
-          <div className="text-center">
-            <span className="text-6xl">♠️</span>
-            <h1 className="text-4xl font-extrabold mt-4">Truco Uruguayo</h1>
-            <p className="text-gray-400 mt-2 text-sm">Con muestra · Envido · Flor · 1 vs Máquina</p>
+      <div className="relative flex-1 flex items-center justify-center px-4 py-16 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_-5%,rgba(109,40,217,0.2),transparent)]" />
+        <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(rgba(139,92,246,0.05) 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+
+        <div className="relative z-10 w-full max-w-sm bg-white/[0.03] border border-white/[0.07] rounded-3xl p-10 flex flex-col gap-8 backdrop-blur-sm">
+          <div className="text-center flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-purple-900/40 border border-purple-700/25 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-purple-400">
+                <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 3c.8 0 1.5.3 2.1.8L7.8 14.1C7.3 13.5 7 12.8 7 12c0-2.8 2.2-5 5-5zm0 14c-.8 0-1.5-.3-2.1-.8l6.3-8.3c.5.6.8 1.3.8 2.1 0 2.8-2.2 5-5 5z"/>
+              </svg>
+            </div>
+            <div>
+              <span className="inline-flex items-center gap-1.5 bg-purple-950/50 border border-purple-600/30 text-purple-300 text-[10px] font-semibold px-3 py-1 rounded-full uppercase tracking-widest">
+                1 vs Máquina
+              </span>
+              <h1 className="text-3xl font-extrabold mt-3">Truco Uruguayo</h1>
+              <p className="text-gray-500 text-sm mt-1">Con muestra · Envido · Flor</p>
+            </div>
           </div>
-          <div>
-            <p className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-3">¿Hasta cuántos puntos?</p>
-            <div className="grid grid-cols-4 gap-3">
+
+          <div className="flex flex-col gap-3">
+            <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">¿Hasta cuántos puntos?</p>
+            <div className="grid grid-cols-4 gap-2">
               {[10, 20, 30, 40].map(l => (
                 <button key={l} onClick={() => setLimite(l)}
-                  className={`py-3 rounded-xl border-2 font-bold text-lg transition ${limite === l ? 'border-purple-500 bg-purple-950 text-white' : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-500'}`}>
+                  className={`py-3 rounded-xl border font-bold text-base transition-all ${limite === l ? 'border-purple-500 bg-purple-950/60 text-white shadow-[0_0_16px_rgba(139,92,246,0.2)]' : 'border-white/[0.07] bg-white/[0.03] text-gray-400 hover:border-purple-500/30 hover:text-white'}`}>
                   {l}
                 </button>
               ))}
             </div>
           </div>
-          <button onClick={iniciar} className="bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl text-xl font-bold transition hover:scale-105">
+
+          <button
+            onClick={iniciar}
+            className="bg-purple-600 hover:bg-purple-500 text-white py-4 rounded-2xl font-bold transition-all hover:shadow-[0_0_32px_rgba(139,92,246,0.35)] hover:scale-[1.02]"
+          >
             Jugar vs Máquina →
           </button>
         </div>
@@ -314,22 +331,60 @@ export default function Truco() {
   if (pantalla === 'resultado') {
     const gano = ganador === 'jugador'
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+      <div className="min-h-screen bg-[#07070f] text-white flex flex-col">
         <Navbar />
-        <div className="flex-1 flex items-center justify-center px-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-3xl p-10 max-w-md w-full text-center flex flex-col gap-6">
-            <span className="text-7xl">{gano ? '🏆' : '😔'}</span>
+        <div className="relative flex-1 flex items-center justify-center px-4 overflow-hidden">
+          <div className={`absolute inset-0 ${gano ? 'bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(109,40,217,0.25),transparent)]' : 'bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(220,38,38,0.15),transparent)]'}`} />
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(rgba(139,92,246,0.04) 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+
+          <div className="relative z-10 bg-white/[0.03] border border-white/[0.07] rounded-3xl p-10 max-w-sm w-full text-center flex flex-col gap-6 backdrop-blur-sm">
+            <div className="flex justify-center">
+              {gano ? (
+                <div className="w-20 h-20 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10 text-yellow-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0"/>
+                  </svg>
+                </div>
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10 text-red-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z"/>
+                  </svg>
+                </div>
+              )}
+            </div>
+
             <div>
-              <h2 className="text-4xl font-extrabold">{gano ? '¡Ganaste!' : 'Perdiste'}</h2>
-              <p className="text-gray-400 mt-2">{gano ? '¡Sos un capo del Truco!' : 'La máquina te ganó esta vez'}</p>
+              <h2 className={`text-4xl font-extrabold ${gano ? 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500' : 'text-white'}`}>
+                {gano ? '¡Ganaste!' : 'Perdiste'}
+              </h2>
+              <p className="text-gray-500 text-sm mt-1">{gano ? '¡Bien jugado!' : 'La máquina te ganó esta vez'}</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-800 rounded-2xl p-4"><p className="text-gray-400 text-xs">Vos</p><p className="text-3xl font-extrabold text-purple-400">{ptsJ}</p></div>
-              <div className="bg-gray-800 rounded-2xl p-4"><p className="text-gray-400 text-xs">Máquina</p><p className="text-3xl font-extrabold text-red-400">{ptsM}</p></div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-4">
+                <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Vos</p>
+                <p className="text-3xl font-extrabold text-purple-400">{ptsJ}</p>
+              </div>
+              <div className="bg-white/[0.04] border border-white/[0.07] rounded-2xl p-4">
+                <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Máquina</p>
+                <p className="text-3xl font-extrabold text-red-400">{ptsM}</p>
+              </div>
             </div>
-            <div className="flex gap-4">
-              <button onClick={() => setPantalla('menu')} className="flex-1 border-2 border-gray-700 hover:border-purple-500 text-gray-300 py-3 rounded-2xl font-semibold transition">← Menú</button>
-              <button onClick={iniciar} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-2xl font-bold transition">Revancha →</button>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPantalla('menu')}
+                className="flex-1 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.08] text-gray-300 hover:text-white py-3 rounded-2xl font-semibold transition text-sm"
+              >
+                ← Menú
+              </button>
+              <button
+                onClick={iniciar}
+                className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-3 rounded-2xl font-bold transition hover:shadow-[0_0_24px_rgba(139,92,246,0.35)] text-sm"
+              >
+                Revancha →
+              </button>
             </div>
           </div>
         </div>

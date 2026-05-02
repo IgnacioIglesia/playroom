@@ -8,10 +8,8 @@ import Registro from './pages/Registro'
 import Perfil from './pages/Perfil'
 import Truco from './pages/Truco/index.jsx'
 import TrucoOnline from './pages/Truco/TrucoOnline.jsx'
-import TrucoOnline2v2 from './pages/Truco/TrucoOnline2v2'
 import TrucoOnlineSelector from './pages/Truco/TrucoOnlineSelector.jsx'
 import Ranking from './pages/Ranking.jsx'
-import TrucoOnline3v3 from './pages/Truco/TrucoOnline3v3.jsx'
 
 function App() {
   return (
@@ -25,9 +23,8 @@ function App() {
       <Route path="/perfil" element={<Perfil />} />
       <Route path="/juegos/truco" element={<Truco />} />
       <Route path="/juegos/truco-online" element={<TrucoOnlineSelector />} />
-      <Route path="/juegos/truco-online/1vs1" element={<TrucoOnline />} />
-      <Route path="/juegos/truco-online/2vs2" element={<TrucoOnline2v2 />} />
-      <Route path="/juegos/truco-online/3vs3" element={<TrucoOnline3v3 />} />
+      <Route path="/juegos/truco-online/1vs1" element={<TrucoOnline modalidadFijada="1vs1" />} />
+      <Route path="/juegos/truco-online/2vs2" element={<TrucoOnline modalidadFijada="2vs2" />} />
       <Route path="/ranking" element={<Ranking />} />
     </Routes>
   )
