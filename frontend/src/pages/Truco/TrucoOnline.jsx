@@ -59,8 +59,9 @@ export default function TrucoOnline() {
   const { usuario } = useAuth()
   const miNombre = usuario?.displayName || usuario?.email?.split('@')[0] || 'Jugador'
 
-  const [nombreRival, setNombreRival]     = useState('Rival')
+  const [nombreRival, setNombreRival]       = useState('Rival')
   const [inicialesRival, setInicialesRival] = useState('RV')
+  const [rivalPhotoURL, setRivalPhotoURL]   = useState('')
 
   const [florPendiente, setFlorPendiente]   = useState(false)
   const [florCantada, setFlorCantada]       = useState(null)
@@ -200,6 +201,7 @@ export default function TrucoOnline() {
       if (infoRival) {
         setNombreRival(infoRival.nombre || 'Rival')
         setInicialesRival((infoRival.nombre || 'Rival').slice(0, 2).toUpperCase())
+        setRivalPhotoURL(infoRival.photoURL || '')
       }
       setPtsJ(0); setPtsM(0); setGanador(null); setLog([])
       prevResultadosLen.current = 0
@@ -232,7 +234,7 @@ export default function TrucoOnline() {
   useEffect(() => {
     if (conectado && miNombre && sockRef.current) {
       const userId = usuario?.uid || usuario?.email || miNombre
-      sockRef.current.emit('set_nombre', { nombre: miNombre, userId })
+      sockRef.current.emit('set_nombre', { nombre: miNombre, userId, photoURL: usuario?.photoURL || '' })
     }
   }, [conectado, miNombre, usuario])
 
@@ -282,7 +284,7 @@ export default function TrucoOnline() {
   const puedeJugar          = turno === 'yo' && !bloqueado && florResuelta
   const puedeEnvido         = !envidoResuelto && !florJ && !florM && florResuelta && manoActual === 0 && !primeraJugada && !bloqueado
   const puedeTruco          = !trucoResuelto && florResuelta && !mostrandoMano && !esperandoRespuesta
-  const puedeIniciarTruco   = puedeTruco && !trucoCantado && !trucoPendiente
+  const puedeIniciarTruco   = puedeTruco && !trucoCantado && !trucoPendiente && turno === 'yo'
   const puedeRetruco        = puedeTruco && trucoCantado === 'truco'   && cantanteOriginalTruco === 'rival'
   const puedeVale4          = puedeTruco && trucoCantado === 'retruco' && cantanteOriginalTruco === 'yo'
   const puedeIniciarRetruco = puedeTruco && !trucoPendiente && trucoCantado === 'truco'   && cantanteOriginalTruco === 'rival'
@@ -479,6 +481,7 @@ export default function TrucoOnline() {
         puedeSubirRealEnvido={puedeSubirRealEnvido} puedeSubirFaltaEnvido={puedeSubirFaltaEnvido}
         nombreRival={nombreRival} inicialesRival={inicialesRival}
         miNombre={miNombre} miPhotoURL={usuario?.photoURL || ''}
+        rivalPhotoURL={rivalPhotoURL}
         resultadoUltimaMano={resultadoUltimaMano}
         rondaTerminada={rondaTerminada} timerSeg={timerSeg}
         globoYo={globoYo} globoRival={globoRival}

@@ -40,8 +40,9 @@ function generarCodigo() {
 io.on('connection', (socket) => {
   console.log(`🟢 Conectado: ${socket.id}`)
 
-  socket.on('set_nombre', ({ nombre, userId: uid }) => {
+  socket.on('set_nombre', ({ nombre, userId: uid, photoURL }) => {
     socket.nombre = nombre || 'Jugador'
+    socket.photoURL = photoURL || ''
     const userId = uid || socket.id
     const socketAnterior = usuariosConectados.get(userId)
     if (socketAnterior && socketAnterior !== socket.id) {
@@ -69,12 +70,12 @@ io.on('connection', (socket) => {
     const salaId = generarCodigo()
     salas[salaId] = {
       id: salaId,
-      jugadores: [{ id: socket.id, nombre: socket.nombre, userId: socket.userId }],
+      jugadores: [{ id: socket.id, nombre: socket.nombre, userId: socket.userId, photoURL: socket.photoURL }],
       jugadorA: socket.id,
       limite,
       modalidad,
       estado: 'esperando',
-      equipoA: modalidad === '2vs2' ? [{ id: socket.id, nombre: socket.nombre, userId: socket.userId }] : [],
+      equipoA: modalidad === '2vs2' ? [{ id: socket.id, nombre: socket.nombre, userId: socket.userId, photoURL: socket.photoURL }] : [],
       equipoB: [],
       creador: socket.userId,
       createdAt: Date.now()
@@ -112,7 +113,7 @@ io.on('connection', (socket) => {
     socket.join(salaId)
     socket.salaId = salaId
 
-    const jugador = { id: socket.id, nombre: socket.nombre, userId: socket.userId }
+    const jugador = { id: socket.id, nombre: socket.nombre, userId: socket.userId, photoURL: socket.photoURL }
 
     if (sala.modalidad === '1vs1') {
       if (sala.jugadores.length >= 2) { socket.emit('error_sala', '❌ La sala está llena'); return }
@@ -133,8 +134,8 @@ io.on('connection', (socket) => {
         jugadorA: jugadorA.id,
         limite: sala.limite,
         modalidad: sala.modalidad,
-        jugadorAInfo: { id: jugadorA.id, nombre: jugadorA.nombre, userId: jugadorA.userId },
-        jugadorBInfo: { id: jugadorB.id, nombre: jugadorB.nombre, userId: jugadorB.userId },
+        jugadorAInfo: { id: jugadorA.id, nombre: jugadorA.nombre, userId: jugadorA.userId, photoURL: jugadorA.photoURL || '' },
+        jugadorBInfo: { id: jugadorB.id, nombre: jugadorB.nombre, userId: jugadorB.userId, photoURL: jugadorB.photoURL || '' },
       })
 
       emitirEstadoTruco(salaId, partida, logA, logB)

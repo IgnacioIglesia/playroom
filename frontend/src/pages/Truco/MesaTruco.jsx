@@ -42,7 +42,7 @@ export default function MesaTruco({
   puedeIniciarRetruco, puedeIniciarVale4,
   puedeSubirEnvido, puedeSubirRealEnvido, puedeSubirFaltaEnvido,
   nombreRival, inicialesRival,
-  miNombre, miPhotoURL,
+  miNombre, miPhotoURL, rivalPhotoURL,
   florJ, florM, florCantada,
   mostrarCartasRival,
   nivelEnvido,
@@ -124,7 +124,36 @@ export default function MesaTruco({
           )}
         </div>
 
-        <TanteadorPalillos ptsJ={ptsJ} ptsM={ptsM} limite={limite} nombreJ={miNombre} nombreM={nombreRival} />
+        <div className="flex flex-col gap-3">
+          <TanteadorPalillos ptsJ={ptsJ} ptsM={ptsM} limite={limite} nombreJ={miNombre} nombreM={nombreRival} />
+
+          {/* Chat desktop — left panel */}
+          <div className="h-52 flex flex-col gap-1">
+            <p className="text-blue-400 text-[10px] font-semibold uppercase tracking-widest text-center">Chat</p>
+            <div className="bg-blue-950/40 border border-blue-800/40 rounded-xl p-2 flex-1 min-h-0 overflow-y-auto flex flex-col gap-0.5">
+              {log.filter(m => m.startsWith('💬')).slice(0, 4).length === 0
+                ? <p className="text-blue-800 text-xs text-center italic">Sin mensajes</p>
+                : log.filter(m => m.startsWith('💬')).slice(0, 4).map((msg, i) => (
+                    <p key={i} className={`text-xs ${i === 0 ? 'text-blue-200 font-semibold' : 'text-blue-400/60'}`}>{msg}</p>
+                  ))
+              }
+            </div>
+            <div className="flex gap-1">
+              <input
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && enviar()}
+                maxLength={80}
+                placeholder="Escribí..."
+                className="flex-1 bg-gray-900 border border-gray-700 focus:border-blue-500 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none placeholder-gray-600"
+              />
+              <button onClick={enviar} disabled={!chatInput.trim()}
+                className="bg-blue-700 hover:bg-blue-600 disabled:opacity-30 text-white px-2.5 rounded-lg text-xs font-bold transition">
+                →
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* ── CENTRO ── */}
@@ -136,15 +165,20 @@ export default function MesaTruco({
         </div>
 
         {/* Avatar rival */}
-        <div className="flex flex-col items-center gap-1 relative" style={{ zIndex: 20 }}>
-          {globoRival && (
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-700 border border-gray-500 text-white text-xs px-3 py-1.5 rounded-2xl shadow-lg max-w-[180px] text-center z-30 truncate">
-              {globoRival}
-              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-700 border-r border-b border-gray-500 rotate-45" />
-            </div>
-          )}
-          <div className="w-12 h-12 rounded-full bg-red-900 border-2 border-red-600 flex items-center justify-center">
-            <span className="text-white font-extrabold text-lg">{inicialesRival}</span>
+        <div className="flex flex-col items-center gap-1" style={{ zIndex: 20 }}>
+          <div className="relative">
+            {rivalPhotoURL
+              ? <img src={rivalPhotoURL} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-red-600" />
+              : <div className="w-12 h-12 rounded-full bg-red-900 border-2 border-red-600 flex items-center justify-center">
+                  <span className="text-white font-extrabold text-lg">{inicialesRival}</span>
+                </div>
+            }
+            {globoRival && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gray-700 border border-gray-500 text-white text-xs px-3 py-1.5 rounded-2xl shadow-lg max-w-[200px] z-30 whitespace-nowrap">
+                {globoRival}
+                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-gray-700 border-l border-b border-gray-500 rotate-45" />
+              </div>
+            )}
           </div>
           <span className="text-gray-400 text-xs font-semibold">{nombreRival}</span>
         </div>
@@ -154,7 +188,7 @@ export default function MesaTruco({
 
           {/* Cartas rival en abanico */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/3"
-            style={{ width: '280px', height: '150px', zIndex: 10 }}>
+            style={{ width: '320px', height: '175px', zIndex: 10 }}>
             {manoM.map((c, i) => {
               const angulos   = [-15, 0, 15]
               const traslados = [-65, 0, 65]
@@ -173,72 +207,78 @@ export default function MesaTruco({
             })}
           </div>
 
-          <div style={{ height: '70px' }} />
+          <div style={{ height: '90px' }} />
 
           {/* Mesa */}
-          <div className={`w-full rounded-3xl overflow-hidden border-2 shadow-2xl transition-all ${mostrandoMano ? 'border-yellow-500/60' : 'border-white/5'}`}
-            style={{ background: 'radial-gradient(ellipse at 50% 30%, #2d1f4e 0%, #1a1130 60%, #0f0a1e 100%)' }}>
+          <div className={`w-full rounded-2xl overflow-hidden shadow-2xl transition-all border ${mostrandoMano ? 'border-yellow-500/40' : 'border-white/[0.07]'}`}
+            style={{ background: 'linear-gradient(175deg, #1a0f38 0%, #110b24 50%, #0b0718 100%)' }}>
 
             {/* Header */}
-            <div className="flex justify-between items-center px-3 lg:px-4 py-2 border-b border-white/5 bg-black/20">
-              <div className="flex gap-1 items-center">
-                <span className="text-gray-500 text-xs uppercase tracking-widest">Mano</span>
-                {[0,1,2].map(i => (
-                  <span key={i} className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center border ${
-                    resultados[i] === 'jugador' ? 'bg-green-800 border-green-600 text-green-200' :
-                    resultados[i] === 'maquina' ? 'bg-red-900 border-red-700 text-red-200' :
-                    resultados[i] === 'empate'  ? 'bg-gray-700 border-gray-500 text-gray-300' :
-                    i === manoActual            ? 'bg-purple-900/60 border-purple-500 text-purple-300' :
-                                                  'bg-white/5 border-white/10 text-gray-600'
-                  }`}>
-                    {resultados[i] === 'jugador' ? '✓' : resultados[i] === 'maquina' ? '✗' : resultados[i] === 'empate' ? '=' : i + 1}
-                  </span>
-                ))}
+            <div className="flex items-center justify-between px-4 py-2.5 bg-black/30 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-600 text-[10px] font-semibold uppercase tracking-widest">Mano</span>
+                <div className="flex gap-1">
+                  {[0,1,2].map(i => (
+                    <span key={i} className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center border transition-all ${
+                      resultados[i] === 'jugador' ? 'bg-green-800 border-green-600 text-green-200' :
+                      resultados[i] === 'maquina' ? 'bg-red-900 border-red-700 text-red-200' :
+                      resultados[i] === 'empate'  ? 'bg-gray-700 border-gray-500 text-gray-300' :
+                      i === manoActual            ? 'bg-purple-900/70 border-purple-500/80 text-purple-200' :
+                                                    'bg-white/5 border-white/10 text-gray-600'
+                    }`}>
+                      {resultados[i] === 'jugador' ? '✓' : resultados[i] === 'maquina' ? '✗' : resultados[i] === 'empate' ? '=' : i + 1}
+                    </span>
+                  ))}
+                </div>
               </div>
-              <span className={`text-xs font-bold px-2 py-1 rounded-full border ${
-                mostrandoMano
-                  ? resultadoUltimaMano === 'jugador' ? 'bg-green-900/60 border-green-700 text-green-300'
-                  : resultadoUltimaMano === 'maquina' ? 'bg-red-900/60 border-red-700 text-red-300'
-                  : 'bg-gray-700/60 border-gray-600 text-gray-300'
-                : bloqueado ? 'bg-black/40 border-white/10 text-gray-500'
-                : turno === 'yo' || turno === 'jugador' ? 'bg-purple-900/60 border-purple-700 text-purple-300'
-                : 'bg-black/40 border-white/10 text-gray-400'
-              }`}>
-                {mostrandoMano
-                  ? resultadoUltimaMano === 'jugador' ? '✅ Ganaste'
-                  : resultadoUltimaMano === 'maquina' ? '❌ Perdiste'
-                  : '🤝 Empate'
-                : bloqueado && !trucoPendiente && !envidoPendiente && !florPendiente ? '⏳ Esperando...'
-                : trucoPendiente  ? '🗣 Respondé truco'
-                : envidoPendiente ? '🗣 Respondé envido'
-                : florPendiente   ? '🌸 Respondé flor'
-                : !florResuelta   ? '🌸 Resolvé Flor'
-                : turno === 'yo' || turno === 'jugador' ? '🎯 Tu turno'
-                : '⏳ Turno rival'}
-              </span>
+              <div className="flex items-center gap-2.5">
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${
+                  mostrandoMano
+                    ? resultadoUltimaMano === 'jugador' ? 'bg-green-900/60 border-green-700 text-green-300'
+                    : resultadoUltimaMano === 'maquina' ? 'bg-red-900/60 border-red-700 text-red-300'
+                    : 'bg-gray-700/60 border-gray-600 text-gray-300'
+                  : bloqueado ? 'bg-black/40 border-white/10 text-gray-500'
+                  : turno === 'yo' || turno === 'jugador' ? 'bg-purple-900/60 border-purple-700 text-purple-300'
+                  : 'bg-black/40 border-white/10 text-gray-400'
+                }`}>
+                  {mostrandoMano
+                    ? resultadoUltimaMano === 'jugador' ? '✅ Ganaste'
+                    : resultadoUltimaMano === 'maquina' ? '❌ Perdiste'
+                    : '🤝 Empate'
+                  : bloqueado && !trucoPendiente && !envidoPendiente && !florPendiente ? '⏳ Esperando...'
+                  : trucoPendiente  ? '🗣 Respondé truco'
+                  : envidoPendiente ? '🗣 Respondé envido'
+                  : florPendiente   ? '🌸 Respondé flor'
+                  : !florResuelta   ? '🌸 Resolvé Flor'
+                  : turno === 'yo' || turno === 'jugador' ? '🎯 Tu turno'
+                  : '⏳ Turno rival'}
+                </span>
+              </div>
             </div>
 
             {/* Cartas en mesa */}
-            <div className="relative flex flex-col items-center gap-4 lg:gap-6 py-6 lg:py-8 px-4">
+            <div className="relative flex flex-col items-center gap-5 py-8 lg:py-10 px-4">
               <div className="absolute top-3 left-4 flex flex-col items-center gap-1">
-                <span className="text-yellow-500/80 text-xs font-bold uppercase tracking-widest">Muestra</span>
-                {muestra && <CartaMuestra carta={muestra} muestra={muestra} />}
+                <span className="text-yellow-500/70 text-[10px] font-bold uppercase tracking-widest">Muestra</span>
+                {muestra && <CartaMuestra carta={muestra} />}
               </div>
 
               {cjM[manoActual]
                 ? <CartaComp carta={cjM[manoActual]} muestra={muestra} jugada enMesa />
-                : <div className="w-16 h-24 lg:w-20 lg:h-32 rounded-xl border-2 border-dashed border-white/10 bg-black/20 flex items-center justify-center">
-                    <span className="text-white/20 text-2xl">—</span>
-                  </div>
+                : <div className="w-[68px] md:w-20 h-24 md:h-28 rounded-xl flex-shrink-0"
+                    style={{ background: 'rgba(0,0,0,0.35)', boxShadow: 'inset 0 2px 16px rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.04)' }} />
               }
 
-              <div className="w-32 h-px bg-white/10" />
+              <div className="flex items-center gap-2 w-40">
+                <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, transparent, rgba(255,255,255,0.15))' }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-white/25 flex-shrink-0" />
+                <div className="flex-1 h-px" style={{ background: 'linear-gradient(to left, transparent, rgba(255,255,255,0.15))' }} />
+              </div>
 
               {cjJ[manoActual]
                 ? <CartaComp carta={cjJ[manoActual]} muestra={muestra} jugada enMesa />
-                : <div className="w-16 h-24 lg:w-20 lg:h-32 rounded-xl border-2 border-dashed border-white/10 bg-black/20 flex items-center justify-center">
-                    <span className="text-white/20 text-2xl">—</span>
-                  </div>
+                : <div className="w-[68px] md:w-20 h-24 md:h-28 rounded-xl flex-shrink-0"
+                    style={{ background: 'rgba(0,0,0,0.35)', boxShadow: 'inset 0 2px 16px rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.04)' }} />
               }
             </div>
 
@@ -315,12 +355,12 @@ export default function MesaTruco({
               </div>
             )}
 
-            <div style={{ height: '70px' }} />
+            <div style={{ height: '90px' }} />
           </div>
 
           {/* Cartas jugador en abanico */}
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/3"
-            style={{ width: '240px', height: '130px', zIndex: 10 }}>
+            style={{ width: '290px', height: '160px', zIndex: 10 }}>
             {manoJ.map((carta, i) => {
               const angulos   = [-15, 0, 15]
               const traslados = [-65, 0, 65]
@@ -349,7 +389,7 @@ export default function MesaTruco({
           </div>
         </div>
 
-        <div style={{ height: '70px' }} />
+        <div style={{ height: '90px' }} />
 
         {/* Barra de timer cuando es tu turno */}
         {puedeJugar && timerSeg < 30 && (
@@ -382,14 +422,16 @@ export default function MesaTruco({
         {cartaSel && <p className="text-purple-400 text-xs animate-pulse">Clickeá de nuevo para jugar</p>}
 
         {/* Avatar jugador */}
-        <div className="flex flex-col items-center gap-1 mt-1 relative">
-          {globoYo && (
-            <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-purple-800 border border-purple-600 text-white text-xs px-3 py-1.5 rounded-2xl shadow-lg max-w-[180px] text-center z-30 truncate">
-              {globoYo}
-              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-800 border-r border-b border-purple-600 rotate-45" />
-            </div>
-          )}
-          <Avatar usuario={{ displayName: miNombre, photoURL: miPhotoURL }} size="md" />
+        <div className="flex flex-col items-center gap-1 mt-1">
+          <div className="relative">
+            <Avatar usuario={{ displayName: miNombre, photoURL: miPhotoURL }} size="md" />
+            {globoYo && (
+              <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-purple-800 border border-purple-600 text-white text-xs px-3 py-1.5 rounded-2xl shadow-lg max-w-[200px] z-30 whitespace-nowrap">
+                {globoYo}
+                <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-purple-800 border-l border-b border-purple-600 rotate-45" />
+              </div>
+            )}
+          </div>
           <span className="text-gray-400 text-xs font-semibold">{miNombre}</span>
         </div>
 
@@ -494,43 +536,14 @@ export default function MesaTruco({
           <BtnCanto onClick={() => cantarTruco('vale4')}   disabled={!(puedeIniciarVale4  || puedeVale4)}    color="red">Vale Cuatro</BtnCanto>
         </div>
 
-        <div className="flex flex-col flex-1 min-h-0 gap-2">
-          {/* Chat desktop */}
-          <div className="flex flex-col gap-1">
-            <p className="text-blue-400 text-[10px] font-semibold uppercase tracking-widest text-center">Chat</p>
-            <div className="bg-blue-950/40 border border-blue-800/40 rounded-xl p-2 min-h-[48px] flex flex-col gap-0.5">
-              {log.filter(m => m.startsWith('💬')).slice(0, 4).length === 0
-                ? <p className="text-blue-800 text-xs text-center italic">Sin mensajes</p>
-                : log.filter(m => m.startsWith('💬')).slice(0, 4).map((msg, i) => (
-                    <p key={i} className={`text-xs ${i === 0 ? 'text-blue-200 font-semibold' : 'text-blue-400/60'}`}>{msg}</p>
-                  ))
-              }
-            </div>
-            <div className="flex gap-1">
-              <input
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && enviar()}
-                maxLength={80}
-                placeholder="Escribí..."
-                className="flex-1 bg-gray-900 border border-gray-700 focus:border-blue-500 rounded-lg px-2 py-1.5 text-white text-xs focus:outline-none placeholder-gray-600"
-              />
-              <button onClick={enviar} disabled={!chatInput.trim()}
-                className="bg-blue-700 hover:bg-blue-600 disabled:opacity-30 text-white px-2.5 rounded-lg text-xs font-bold transition">
-                →
-              </button>
-            </div>
-          </div>
-
-          {/* Historial de juego */}
-          <div className="flex flex-col flex-1 min-h-0">
-            <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-widest mb-1 text-center">Historial</p>
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 overflow-y-auto flex-1 max-h-64">
-              {log.filter(m => !m.startsWith('💬')).length === 0
-                ? <p className="text-gray-600 text-xs text-center">El historial aparecerá acá</p>
-                : log.filter(m => !m.startsWith('💬')).map((msg, i) => <LogEntry key={i} msg={msg} reciente={i === 0} />)
-              }
-            </div>
+        {/* Historial de juego */}
+        <div className="h-[525px] flex flex-col gap-2">
+          <p className="text-gray-500 text-[10px] font-semibold uppercase tracking-widest mb-1 text-center flex-shrink-0">Historial</p>
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-3 overflow-y-auto flex-1 min-h-0">
+            {log.filter(m => !m.startsWith('💬')).length === 0
+              ? <p className="text-gray-600 text-xs text-center">El historial aparecerá acá</p>
+              : log.filter(m => !m.startsWith('💬')).map((msg, i) => <LogEntry key={i} msg={msg} reciente={i === 0} />)
+            }
           </div>
         </div>
       </div>
