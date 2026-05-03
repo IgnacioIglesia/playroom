@@ -1,0 +1,15 @@
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="200" fill="#1e1b4b"/>
+
+  <rect x="82" y="28" width="170" height="112" rx="12" fill="#312e81" stroke="#818cf8" stroke-width="2"/>
+  <path d="M105 110 C125 70, 150 130, 175 85 S220 95, 230 60" fill="none" stroke="#c4b5fd" stroke-width="5" stroke-linecap="round"/>
+
+  <circle cx="128" cy="62" r="10" fill="#fbbf24"/>
+  <path d="M115 62 L100 62 M128 49 L128 35 M141 62 L156 62 M121 55 L110 44 M135 55 L146 44" stroke="#fde68a" stroke-width="3" stroke-linecap="round"/>
+
+  <rect x="260" y="48" width="28" height="85" rx="8" fill="#7c3aed" transform="rotate(18 274 90)"/>
+  <polygon points="259,132 285,140 268,158" fill="#fef3c7"/>
+  <polygon points="268,158 275,145 285,140" fill="#a16207"/>
+
+  <text x="200" y="178" text-anchor="middle" font-size="13" font-family="sans-serif" fill="#6d28d9" font-weight="bold" letter-spacing="3">PICTIONARY</text>
+</svg>

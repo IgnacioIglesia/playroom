@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CartaComp, CartaMuestra, BtnCanto, TanteadorPalillos } from './componentes'
+import { CartaComp, CartaMuestra, BtnCanto, TanteadorPalillos, PlayerPopup } from './componentes'
 import Avatar from '../../components/Avatar'
 
 function LogEntry({ msg, reciente }) {
@@ -22,37 +22,6 @@ function LogEntry({ msg, reciente }) {
   return <p className={`text-xs mb-1 ${color}`}>{msg}</p>
 }
 
-function CartasFaceDown({ cantidad, label }) {
-  const angulos   = [-15, 0, 15]
-  const traslados = [-50, 0, 50]
-  const cards = Array(Math.max(0, Math.min(3, cantidad))).fill(null)
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <div className="relative" style={{ width: '100px', height: '80px' }}>
-        {cards.map((_, i) => (
-          <div key={i} style={{
-            position: 'absolute',
-            bottom: 0, left: '50%',
-            transform: `translateX(calc(-50% + ${traslados[i] ?? 0}px)) rotate(${angulos[i] ?? 0}deg)`,
-            transformOrigin: 'bottom center',
-            zIndex: i + 1,
-          }}>
-            <div className="w-10 h-14 rounded-lg overflow-hidden shadow-md border border-gray-600 flex-shrink-0">
-              <img src="/cartas/back_red.png" alt="?" className="w-full h-full object-cover" />
-            </div>
-          </div>
-        ))}
-        {cards.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-gray-600 text-xs">sin cartas</span>
-          </div>
-        )}
-      </div>
-      {label && <span className="text-gray-400 text-xs font-semibold truncate max-w-[100px]">{label}</span>}
-    </div>
-  )
-}
 
 function CartasPartner({ partner, muestra }) {
   if (!partner) return null
@@ -121,10 +90,13 @@ export default function MesaTruco2v2({
   miNombre, miPhotoURL,
   log, onEnviarMensaje,
   rondaTerminada, mostrandoMano,
-  globoYo, globoRival,
+  globoYo, globoPartner, globoRival1, globoRival2,
   timerSeg,
 }) {
-  const [chatInput, setChatInput] = useState('')
+  const [chatInput, setChatInput]       = useState('')
+  const [popupPartner, setPopupPartner] = useState(false)
+  const [popupR1, setPopupR1]           = useState(false)
+  const [popupR2, setPopupR2]           = useState(false)
 
   const enviar = () => {
     const txt = chatInput.trim()
@@ -135,6 +107,15 @@ export default function MesaTruco2v2({
 
   const rival1 = rivals?.[0]
   const rival2 = rivals?.[1]
+
+  const jugadaPartner = jugadasMano?.find(j => j.socketId === partner?.socket)
+  const jugadaRival1  = jugadasMano?.find(j => j.socketId === rival1?.socket)
+  const jugadaRival2  = jugadasMano?.find(j => j.socketId === rival2?.socket)
+  const jugadaYo      = jugadasMano?.find(j =>
+    j.socketId !== partner?.socket &&
+    j.socketId !== rival1?.socket &&
+    j.socketId !== rival2?.socket
+  )
 
   const esMiTurno = turno === 'yo'
 
@@ -257,144 +238,188 @@ export default function MesaTruco2v2({
         {/* Partner arriba */}
         <div className="flex flex-col items-center gap-1 relative">
           <CartasPartner partner={partner} muestra={muestra} />
-          {globoRival && (
+          {globoPartner && (
             <div className="absolute top-0 left-full ml-3 bg-gray-700 border border-gray-500 text-white text-xs px-3 py-1.5 rounded-2xl shadow-lg max-w-[200px] z-30 whitespace-nowrap">
-              {globoRival}
+              {globoPartner}
               <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-gray-700 border-l border-b border-gray-500 rotate-45" />
             </div>
           )}
         </div>
 
-        {/* Rival 1 + Mesa central + Rival 2 */}
-        <div className="flex items-center justify-center gap-3 w-full max-w-2xl">
+        {/* Mesa central — full width */}
+        <div className="w-full">
+          <div className={`w-full rounded-2xl overflow-hidden shadow-2xl transition-all border ${mostrandoMano ? 'border-yellow-500/40' : 'border-white/[0.07]'}`}
+            style={{ background: 'linear-gradient(175deg, #1a0f38 0%, #110b24 50%, #0b0718 100%)' }}>
 
-          {/* Rival 1 */}
-          <div className="flex flex-col items-center gap-1 flex-shrink-0">
-            <CartasFaceDown cantidad={rival1?.manoRestante ?? 0} label={rival1?.nombre || 'Rival 1'} />
-            {rival1?.tieneFlorPiece && <span className="text-yellow-400 text-xs">🌸</span>}
-          </div>
-
-          {/* Mesa central */}
-          <div className="flex-1 min-w-0">
-            <div className={`w-full rounded-2xl overflow-hidden shadow-2xl transition-all border ${mostrandoMano ? 'border-yellow-500/40' : 'border-white/[0.07]'}`}
-              style={{ background: 'linear-gradient(175deg, #1a0f38 0%, #110b24 50%, #0b0718 100%)' }}>
-
-              {/* Header */}
-              <div className="flex items-center justify-between px-3 py-2 bg-black/30 border-b border-white/[0.06]">
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-600 text-[10px] font-semibold uppercase tracking-widest">Mano</span>
-                  <div className="flex gap-1">
-                    {[0, 1, 2].map(i => (
-                      <span key={i} className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center border transition-all ${
-                        resultados?.[i] === 'jugador' ? 'bg-green-800 border-green-600 text-green-200' :
-                        resultados?.[i] === 'maquina' ? 'bg-red-900 border-red-700 text-red-200' :
-                        resultados?.[i] === 'empate'  ? 'bg-gray-700 border-gray-500 text-gray-300' :
-                        i === manoActual              ? 'bg-purple-900/70 border-purple-500/80 text-purple-200' :
-                                                        'bg-white/5 border-white/10 text-gray-600'
-                      }`}>
-                        {resultados?.[i] === 'jugador' ? '✓' : resultados?.[i] === 'maquina' ? '✗' : resultados?.[i] === 'empate' ? '=' : i + 1}
-                      </span>
-                    ))}
-                  </div>
+            {/* Header */}
+            <div className="flex items-center justify-between px-3 py-2 bg-black/30 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <span className="text-gray-600 text-[10px] font-semibold uppercase tracking-widest">Mano</span>
+                <div className="flex gap-1">
+                  {[0, 1, 2].map(i => (
+                    <span key={i} className={`w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center border transition-all ${
+                      resultados?.[i] === 'jugador' ? 'bg-green-800 border-green-600 text-green-200' :
+                      resultados?.[i] === 'maquina' ? 'bg-red-900 border-red-700 text-red-200' :
+                      resultados?.[i] === 'empate'  ? 'bg-gray-700 border-gray-500 text-gray-300' :
+                      i === manoActual              ? 'bg-purple-900/70 border-purple-500/80 text-purple-200' :
+                                                      'bg-white/5 border-white/10 text-gray-600'
+                    }`}>
+                      {resultados?.[i] === 'jugador' ? '✓' : resultados?.[i] === 'maquina' ? '✗' : resultados?.[i] === 'empate' ? '=' : i + 1}
+                    </span>
+                  ))}
                 </div>
-                <span className={`text-xs font-bold px-2 py-1 rounded-full border ${
-                  mostrandoMano
-                    ? resultadoUltimaMano === 'jugador' ? 'bg-green-900/60 border-green-700 text-green-300'
-                    : resultadoUltimaMano === 'maquina' ? 'bg-red-900/60 border-red-700 text-red-300'
-                    : 'bg-gray-700/60 border-gray-600 text-gray-300'
-                  : bloqueado ? 'bg-black/40 border-white/10 text-gray-500'
-                  : esMiTurno ? 'bg-purple-900/60 border-purple-700 text-purple-300'
-                  : 'bg-black/40 border-white/10 text-gray-400'
-                }`}>
-                  {mostrandoMano
-                    ? resultadoUltimaMano === 'jugador' ? '✅ Ganaron'
-                    : resultadoUltimaMano === 'maquina' ? '❌ Perdieron'
-                    : '🤝 Empate'
-                  : trucoPendiente  ? '🗣 Respondé truco'
-                  : envidoPendiente ? '🗣 Respondé envido'
-                  : florPendiente   ? '🌸 Respondé flor'
-                  : !florResuelta   ? '🌸 Resolvé Flor'
-                  : turnoLabel}
-                </span>
+              </div>
+              <span className={`text-xs font-bold px-2 py-1 rounded-full border ${
+                mostrandoMano
+                  ? resultadoUltimaMano === 'jugador' ? 'bg-green-900/60 border-green-700 text-green-300'
+                  : resultadoUltimaMano === 'maquina' ? 'bg-red-900/60 border-red-700 text-red-300'
+                  : 'bg-gray-700/60 border-gray-600 text-gray-300'
+                : bloqueado ? 'bg-black/40 border-white/10 text-gray-500'
+                : esMiTurno ? 'bg-purple-900/60 border-purple-700 text-purple-300'
+                : 'bg-black/40 border-white/10 text-gray-400'
+              }`}>
+                {mostrandoMano
+                  ? resultadoUltimaMano === 'jugador' ? '✅ Ganaron'
+                  : resultadoUltimaMano === 'maquina' ? '❌ Perdieron'
+                  : '🤝 Empate'
+                : trucoPendiente  ? '🗣 Respondé truco'
+                : envidoPendiente ? '🗣 Respondé envido'
+                : florPendiente   ? '🌸 Respondé flor'
+                : !florResuelta   ? '🌸 Resolvé Flor'
+                : turnoLabel}
+              </span>
+            </div>
+
+            {/* Mesa body — cross layout with absolute positioning */}
+            <div className="relative" style={{ height: '420px' }}>
+
+              {/* Muestra — top left */}
+              <div className="absolute top-3 left-3 flex flex-col items-center gap-0.5 z-10">
+                <span className="text-yellow-500/70 text-[9px] font-bold uppercase tracking-widest">Muestra</span>
+                {muestra && <CartaMuestra carta={muestra} size="sm" />}
               </div>
 
-              {/* Jugadas en mesa — trick actual */}
-              <div className="relative flex flex-col items-center gap-2 py-4 px-3">
-                <div className="absolute top-2 left-3 flex flex-col items-center gap-0.5">
-                  <span className="text-yellow-500/70 text-[10px] font-bold uppercase tracking-widest">Muestra</span>
-                  {muestra && <CartaMuestra carta={muestra} size="sm" />}
-                </div>
-
-                {jugadasMano && jugadasMano.length > 0 ? (
-                  <div className="flex gap-2 flex-wrap justify-center pt-1">
-                    {jugadasMano.map((j, idx) => (
-                      <div key={idx} className="flex flex-col items-center gap-0.5">
-                        <CartaComp carta={j.carta} muestra={muestra} jugada enMesa />
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="w-14 h-20 rounded-xl"
-                    style={{ background: 'rgba(0,0,0,0.35)', boxShadow: 'inset 0 2px 16px rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.04)' }} />
+              {/* Partner — top center */}
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
+                {jugadaPartner
+                  ? <CartaComp carta={jugadaPartner.carta} muestra={muestra} jugada enMesa />
+                  : <div className="w-[68px] h-24 rounded-lg border border-dashed border-white/[0.08]" />
+                }
+                <button onClick={() => setPopupPartner(v => !v)}
+                  className="text-green-400 text-[10px] font-semibold truncate max-w-[80px] text-center cursor-pointer hover:text-green-300 transition-colors focus:outline-none">
+                  {partner?.nombre?.split(' ')[0] || 'Partner'}{partner?.tieneFlorPiece ? ' 🌸' : ''}
+                </button>
+                {popupPartner && (
+                  <PlayerPopup userId={partner?.userId} nombre={partner?.nombre} photoURL={partner?.photoURL}
+                    onClose={() => setPopupPartner(false)} className="top-full mt-1 left-1/2 -translate-x-1/2" />
                 )}
               </div>
 
-              {/* Truco cantado */}
-              {trucoCantado && (
-                <div className="px-3 pb-2 flex justify-center">
-                  <span className="bg-red-950/80 border border-red-700/60 text-red-300 text-xs px-3 py-1.5 rounded-full font-bold">
-                    {trucoCantado === 'truco' ? '🗣 Truco' : trucoCantado === 'retruco' ? '🗣 Retruco' : '🗣 Vale Cuatro'}
-                  </span>
-                </div>
-              )}
-
-              {/* Responder truco */}
-              {trucoPendiente && (
-                <div className="px-3 pb-3 flex flex-col gap-2">
-                  <p className="text-red-400 text-xs font-bold text-center uppercase tracking-wider">
-                    Cantaron {trucoCantado === 'truco' ? 'Truco' : trucoCantado === 'retruco' ? 'Retruco' : 'Vale Cuatro'}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <BtnCanto onClick={responderTrucoQuiero} color="red">Quiero ✓</BtnCanto>
-                    <BtnCanto onClick={responderTrucoNoQuiero} color="red">No quiero ✗</BtnCanto>
+              {/* Rival 1 — left center */}
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1">
+                {jugadaRival1
+                  ? <CartaComp carta={jugadaRival1.carta} muestra={muestra} jugada enMesa />
+                  : <div className="w-[68px] h-24 rounded-lg border border-dashed border-white/[0.08]" />
+                }
+                <button onClick={() => setPopupR1(v => !v)}
+                  className="text-red-400 text-[10px] font-semibold truncate max-w-[80px] text-center cursor-pointer hover:text-red-300 transition-colors focus:outline-none">
+                  {rival1?.nombre?.split(' ')[0] || 'Rival 1'}{rival1?.tieneFlorPiece ? ' 🌸' : ''}
+                </button>
+                <span className="text-gray-600 text-[9px]">🂠 {rival1?.manoRestante ?? 0}</span>
+                {globoRival1 && (
+                  <div className="absolute top-0 left-full ml-2 bg-gray-700 border border-gray-500 text-white text-[10px] px-2.5 py-1 rounded-xl shadow-lg max-w-[140px] z-30 whitespace-nowrap">
+                    {globoRival1}
+                    <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-gray-700 border-l border-b border-gray-500 rotate-45" />
                   </div>
-                </div>
-              )}
+                )}
+                {popupR1 && (
+                  <PlayerPopup userId={rival1?.userId} nombre={rival1?.nombre} photoURL={rival1?.photoURL}
+                    onClose={() => setPopupR1(false)} className="top-0 left-full ml-2" />
+                )}
+              </div>
 
-              {/* Responder envido */}
-              {envidoPendiente && (
-                <div className="px-3 pb-3 flex flex-col gap-2">
-                  <p className="text-blue-400 text-xs font-bold text-center uppercase tracking-wider">
-                    Cantaron {nivelEnvido === 'real' ? 'Real Envido' : nivelEnvido === 'falta' ? 'Falta Envido' : 'Envido'}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <BtnCanto onClick={responderEnvidoQuiero} color="blue">Quiero ✓</BtnCanto>
-                    <BtnCanto onClick={responderEnvidoNoQuiero} color="blue">No quiero ✗</BtnCanto>
+              {/* Rival 2 — right center */}
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col items-center gap-1">
+                {jugadaRival2
+                  ? <CartaComp carta={jugadaRival2.carta} muestra={muestra} jugada enMesa />
+                  : <div className="w-[68px] h-24 rounded-lg border border-dashed border-white/[0.08]" />
+                }
+                <button onClick={() => setPopupR2(v => !v)}
+                  className="text-red-400 text-[10px] font-semibold truncate max-w-[80px] text-center cursor-pointer hover:text-red-300 transition-colors focus:outline-none">
+                  {rival2?.nombre?.split(' ')[0] || 'Rival 2'}{rival2?.tieneFlorPiece ? ' 🌸' : ''}
+                </button>
+                <span className="text-gray-600 text-[9px]">🂠 {rival2?.manoRestante ?? 0}</span>
+                {globoRival2 && (
+                  <div className="absolute top-0 right-full mr-2 bg-gray-700 border border-gray-500 text-white text-[10px] px-2.5 py-1 rounded-xl shadow-lg max-w-[140px] z-30 whitespace-nowrap">
+                    {globoRival2}
+                    <div className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-gray-700 border-r border-t border-gray-500 rotate-45" />
                   </div>
-                </div>
-              )}
+                )}
+                {popupR2 && (
+                  <PlayerPopup userId={rival2?.userId} nombre={rival2?.nombre} photoURL={rival2?.photoURL}
+                    onClose={() => setPopupR2(false)} className="top-0 right-full mr-2" />
+                )}
+              </div>
 
-              {/* Flor — responder */}
-              {florPendiente && (
-                <div className="px-3 pb-3 flex flex-col gap-2">
-                  <p className="text-yellow-400 text-xs font-bold text-center">
-                    🌸 Cantaron {florCantada === 'flor' ? 'Flor' : florCantada === 'conFlor' ? 'Con Flor Envido' : 'Contra Flor al Resto'}
-                  </p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <BtnCanto onClick={responderFlorQuiero} color="yellow">Quiero ✓</BtnCanto>
-                    <BtnCanto onClick={responderFlorNoQuiero} color="yellow">No quiero ✗</BtnCanto>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ height: '10px' }} />
+              {/* Yo — bottom center */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1">
+                {jugadaYo
+                  ? <CartaComp carta={jugadaYo.carta} muestra={muestra} jugada enMesa />
+                  : <div className="w-[68px] h-24 rounded-lg border border-dashed border-white/[0.08]" />
+                }
+                <span className="text-purple-400 text-[10px] font-semibold">Vos</span>
+              </div>
             </div>
-          </div>
 
-          {/* Rival 2 */}
-          <div className="flex flex-col items-center gap-1 flex-shrink-0">
-            <CartasFaceDown cantidad={rival2?.manoRestante ?? 0} label={rival2?.nombre || 'Rival 2'} />
-            {rival2?.tieneFlorPiece && <span className="text-yellow-400 text-xs">🌸</span>}
+            {/* Truco cantado */}
+            {trucoCantado && (
+              <div className="px-3 pb-2 flex justify-center">
+                <span className="bg-red-950/80 border border-red-700/60 text-red-300 text-xs px-3 py-1.5 rounded-full font-bold">
+                  {trucoCantado === 'truco' ? '🗣 Truco' : trucoCantado === 'retruco' ? '🗣 Retruco' : '🗣 Vale Cuatro'}
+                </span>
+              </div>
+            )}
+
+            {/* Responder truco */}
+            {trucoPendiente && (
+              <div className="px-3 pb-3 flex flex-col gap-2">
+                <p className="text-red-400 text-xs font-bold text-center uppercase tracking-wider">
+                  Cantaron {trucoCantado === 'truco' ? 'Truco' : trucoCantado === 'retruco' ? 'Retruco' : 'Vale Cuatro'}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <BtnCanto onClick={responderTrucoQuiero} color="red">Quiero ✓</BtnCanto>
+                  <BtnCanto onClick={responderTrucoNoQuiero} color="red">No quiero ✗</BtnCanto>
+                </div>
+              </div>
+            )}
+
+            {/* Responder envido */}
+            {envidoPendiente && (
+              <div className="px-3 pb-3 flex flex-col gap-2">
+                <p className="text-blue-400 text-xs font-bold text-center uppercase tracking-wider">
+                  Cantaron {nivelEnvido === 'real' ? 'Real Envido' : nivelEnvido === 'falta' ? 'Falta Envido' : 'Envido'}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <BtnCanto onClick={responderEnvidoQuiero} color="blue">Quiero ✓</BtnCanto>
+                  <BtnCanto onClick={responderEnvidoNoQuiero} color="blue">No quiero ✗</BtnCanto>
+                </div>
+              </div>
+            )}
+
+            {/* Flor — responder */}
+            {florPendiente && (
+              <div className="px-3 pb-3 flex flex-col gap-2">
+                <p className="text-yellow-400 text-xs font-bold text-center">
+                  🌸 Cantaron {florCantada === 'flor' ? 'Flor' : florCantada === 'conFlor' ? 'Con Flor Envido' : 'Contra Flor al Resto'}
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <BtnCanto onClick={responderFlorQuiero} color="yellow">Quiero ✓</BtnCanto>
+                  <BtnCanto onClick={responderFlorNoQuiero} color="yellow">No quiero ✗</BtnCanto>
+                </div>
+              </div>
+            )}
+
+            <div style={{ height: '10px' }} />
           </div>
         </div>
 

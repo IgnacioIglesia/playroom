@@ -365,7 +365,10 @@ function procesarAccion(p, socketId, tipo, datos) {
     case 'vale4': {
       if (p.trucoResuelto) return { ok: false, error: 'El truco ya fue resuelto' }
       if (!p.florResuelta) return { ok: false, error: 'Resolvé la Flor primero' }
-      if (p.trucoPendientePara != null) return { ok: false, error: 'Hay un truco pendiente de respuesta' }
+      const pendingParaMi1v1 = p.trucoPendientePara === yo
+      // Bloquear solo si el pendiente NO es para mí, o si es para mí pero no es una subida
+      if (p.trucoPendientePara != null && !pendingParaMi1v1) return { ok: false, error: 'Hay un truco pendiente de respuesta' }
+      if (pendingParaMi1v1 && tipo !== 'retruco' && tipo !== 'vale4') return { ok: false, error: 'Hay un truco pendiente — respondé primero' }
       if (tipo === 'truco' && p.trucoCantado) return { ok: false, error: 'El truco ya fue cantado' }
       if (tipo === 'retruco') {
         if (p.trucoCantado !== 'truco') return { ok: false, error: 'No se puede cantar Retruco ahora' }
@@ -374,6 +377,13 @@ function procesarAccion(p, socketId, tipo, datos) {
       if (tipo === 'vale4') {
         if (p.trucoCantado !== 'retruco') return { ok: false, error: 'No se puede cantar Vale 4 ahora' }
         if (p.cantanteOriginalTruco !== yo) return { ok: false, error: 'Solo quien cantó Truco puede subir a Vale 4' }
+      }
+      // Si había pendiente para mí, acepto implícitamente antes de subir
+      if (pendingParaMi1v1) {
+        const nAnt = p.trucoCantado === 'truco' ? 'Truco' : 'Retruco'
+        logA.push(esA ? `✅ Aceptaste el ${nAnt} (implícito)` : `✅ ${nRivA} aceptó el ${nAnt} (implícito)`)
+        logB.push(esA ? `✅ ${nRivB} aceptó el ${nAnt} (implícito)` : `✅ Aceptaste el ${nAnt} (implícito)`)
+        p.trucoPendientePara = null
       }
       if (tipo === 'truco') p.cantanteOriginalTruco = yo
       p.trucoCantado = tipo
@@ -420,7 +430,7 @@ function procesarAccion(p, socketId, tipo, datos) {
         if (p.florA || p.florB) return { ok: false, error: 'No se puede cantar envido con flor en juego' }
       }
       const pts = tipo === 'falta'
-        ? p.limite - Math.min(p.ptsA, p.ptsB)
+        ? p.limite - Math.max(p.ptsA, p.ptsB)
         : tipo === 'real' ? p.envidoAcumulado + 3 : p.envidoAcumulado + 2
       p.nivelEnvido = tipo
       p.envidoAcumulado = pts
@@ -518,18 +528,22 @@ function procesarAccion(p, socketId, tipo, datos) {
 // ─── 2v2 ────────────────────────────────────────────────────────────────────
 
 function crearPartida2v2(equipoA, equipoB, limite) {
-  // equipoA: [{id, nombre}], equipoB: [{id, nombre}]
+  // equipoA: [{id, nombre, userId, photoURL}], equipoB: [...]
   // orden intercalado: [A1, B1, A2, B2]
   const sockets = [equipoA[0].id, equipoB[0].id, equipoA[1].id, equipoB[1].id]
   const nombres = {}
+  const userIds = {}
+  const photoURLs = {}
   const equipoDe = {}
-  for (const j of equipoA) { nombres[j.id] = j.nombre; equipoDe[j.id] = 'A' }
-  for (const j of equipoB) { nombres[j.id] = j.nombre; equipoDe[j.id] = 'B' }
+  for (const j of equipoA) { nombres[j.id] = j.nombre; userIds[j.id] = j.userId || j.id; photoURLs[j.id] = j.photoURL || ''; equipoDe[j.id] = 'A' }
+  for (const j of equipoB) { nombres[j.id] = j.nombre; userIds[j.id] = j.userId || j.id; photoURLs[j.id] = j.photoURL || ''; equipoDe[j.id] = 'B' }
 
   const p = {
     modalidad: '2v2',
     sockets,
     nombres,
+    userIds,
+    photoURLs,
     equipoDe,
     equipoA: equipoA.map(j => j.id),
     equipoB: equipoB.map(j => j.id),
@@ -772,7 +786,9 @@ function procesarAccion2v2(p, socketId, tipo, datos) {
     case 'vale4': {
       if (p.trucoResuelto) return { ok: false, error: 'El truco ya fue resuelto' }
       if (!p.florResuelta) return { ok: false, error: 'Resolve la Flor primero' }
-      if (p.trucoPendientePara != null) return { ok: false, error: 'Hay un truco pendiente de respuesta' }
+      const pendingParaMi2v2 = p.trucoPendientePara === miEquipo
+      if (p.trucoPendientePara != null && !pendingParaMi2v2) return { ok: false, error: 'Hay un truco pendiente de respuesta' }
+      if (pendingParaMi2v2 && tipo !== 'retruco' && tipo !== 'vale4') return { ok: false, error: 'Hay un truco pendiente — respondé primero' }
       if (tipo === 'truco' && p.trucoCantado) return { ok: false, error: 'El truco ya fue cantado' }
       if (tipo === 'retruco') {
         if (p.trucoCantado !== 'truco') return { ok: false, error: 'No se puede cantar Retruco ahora' }
@@ -781,6 +797,13 @@ function procesarAccion2v2(p, socketId, tipo, datos) {
       if (tipo === 'vale4') {
         if (p.trucoCantado !== 'retruco') return { ok: false, error: 'No se puede cantar Vale 4 ahora' }
         if (p.cantanteEquipoTruco !== miEquipo) return { ok: false, error: 'Solo el equipo que canto Truco puede subir a Vale 4' }
+      }
+      // Si había pendiente para mi equipo, acepto implícitamente antes de subir
+      if (pendingParaMi2v2) {
+        const nAnt = p.trucoCantado === 'truco' ? 'Truco' : 'Retruco'
+        addTeam(miEquipo, `Aceptaron el ${nAnt} (implícito)`)
+        addTeam(rivalEquipo, `Rival acepto el ${nAnt} (implícito)`)
+        p.trucoPendientePara = null
       }
       if (tipo === 'truco') { p.cantanteOriginalTruco = socketId; p.cantanteEquipoTruco = miEquipo }
       p.trucoCantado = tipo
@@ -827,7 +850,7 @@ function procesarAccion2v2(p, socketId, tipo, datos) {
         if (p.sockets.some(sid => p.flors[sid])) return { ok: false, error: 'No se puede cantar envido con flor en juego' }
       }
       const pts = tipo === 'falta'
-        ? p.limite - Math.min(p.ptsA, p.ptsB)
+        ? p.limite - Math.max(p.ptsA, p.ptsB)
         : tipo === 'real' ? p.envidoAcumulado + 3 : p.envidoAcumulado + 2
       p.nivelEnvido = tipo
       p.envidoAcumulado = pts
@@ -963,6 +986,8 @@ function getEstadoParaSocket2v2(p, socketId) {
   const rivals = rivalSids.map(sid => ({
     socket: sid,
     nombre: p.nombres[sid],
+    userId: p.userIds?.[sid] || sid,
+    photoURL: p.photoURLs?.[sid] || '',
     manoRestante: (p.manos[sid] || []).length,
     cartasJugadas: p.cartasJugadas[sid] || [],
     tieneFlorPiece: p.flors[sid] || false,
@@ -987,6 +1012,8 @@ function getEstadoParaSocket2v2(p, socketId) {
     partner: {
       socket: partnerSid,
       nombre: p.nombres[partnerSid] || '',
+      userId: p.userIds?.[partnerSid] || partnerSid,
+      photoURL: p.photoURLs?.[partnerSid] || '',
       manoRestante: partnerManoRestante,
       cartasJugadas: partnerCartasJugadas,
       tieneFlorPiece: partnerTieneFlor,

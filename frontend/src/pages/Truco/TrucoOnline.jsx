@@ -77,6 +77,7 @@ export default function TrucoOnline({ modalidadFijada = null }) {
   const [nombreRival, setNombreRival]       = useState('Rival')
   const [inicialesRival, setInicialesRival] = useState('RV')
   const [rivalPhotoURL, setRivalPhotoURL]   = useState('')
+  const [rivalUserId, setRivalUserId]       = useState(null)
 
   const [florPendiente, setFlorPendiente]   = useState(false)
   const [florCantada, setFlorCantada]       = useState(null)
@@ -91,16 +92,23 @@ export default function TrucoOnline({ modalidadFijada = null }) {
   const [copied, setCopied]           = useState(false)
   const [rondaTerminada, setRondaTerminada] = useState(false)
   const [timerSeg, setTimerSeg]       = useState(30)
-  const [globoYo, setGloboYo]         = useState(null)
-  const [globoRival, setGloboRival]   = useState(null)
+  const [globoYo, setGloboYo]               = useState(null)
+  const [globoRival, setGloboRival]         = useState(null)
+  const [globoPartner2v2, setGloboPartner2v2] = useState(null)
+  const [globoRival1_2v2, setGloboRival1_2v2] = useState(null)
+  const [globoRival2_2v2, setGloboRival2_2v2] = useState(null)
 
-  const prevResultadosLen = useRef(0)
-  const timerRef          = useRef(null)
-  const manoJRef          = useRef([])
-  const navigate          = useNavigate()
+  const prevResultadosLen  = useRef(0)
+  const timerRef           = useRef(null)
+  const manoJRef           = useRef([])
+  const partner2v2Ref      = useRef(null)
+  const rivals2v2Ref       = useRef([])
+  const navigate           = useNavigate()
   const { setGuard, clearGuard } = useNavigationGuard()
 
-  manoJRef.current = manoJ
+  manoJRef.current      = manoJ
+  partner2v2Ref.current = partner2v2
+  rivals2v2Ref.current  = rivals2v2
 
   const puedeSubirEnvido      = envidoPendiente && nivelEnvido !== 'falta'
   const puedeSubirRealEnvido  = envidoPendiente && nivelEnvido !== 'falta'
@@ -278,6 +286,7 @@ export default function TrucoOnline({ modalidadFijada = null }) {
         setNombreRival(infoRival.nombre || 'Rival')
         setInicialesRival((infoRival.nombre || 'Rival').slice(0, 2).toUpperCase())
         setRivalPhotoURL(infoRival.photoURL || '')
+        setRivalUserId(infoRival.userId || null)
       }
       setPtsJ(0); setPtsM(0); setGanador(null); setLog([])
       prevResultadosLen.current = 0
@@ -321,8 +330,17 @@ export default function TrucoOnline({ modalidadFijada = null }) {
 
     socket.on('chat_recibido', ({ nombre, texto }) => {
       addLog([`💬 ${nombre}: ${texto}`])
-      setGloboRival(texto)
-      setTimeout(() => setGloboRival(null), 5000)
+      const partner = partner2v2Ref.current
+      const rivals  = rivals2v2Ref.current
+      if (partner?.nombre === nombre) {
+        setGloboPartner2v2(texto); setTimeout(() => setGloboPartner2v2(null), 5000)
+      } else if (rivals?.[0]?.nombre === nombre) {
+        setGloboRival1_2v2(texto); setTimeout(() => setGloboRival1_2v2(null), 5000)
+      } else if (rivals?.[1]?.nombre === nombre) {
+        setGloboRival2_2v2(texto); setTimeout(() => setGloboRival2_2v2(null), 5000)
+      } else {
+        setGloboRival(texto); setTimeout(() => setGloboRival(null), 5000)
+      }
     })
 
     socket.on('rival_desconectado', () => {
@@ -391,10 +409,12 @@ export default function TrucoOnline({ modalidadFijada = null }) {
   const puedeEnvido         = !envidoResuelto && !florJ && !florM && florResuelta && manoActual === 0 && !primeraJugada && !bloqueado
   const puedeTruco          = !trucoResuelto && florResuelta && !mostrandoMano && !esperandoRespuesta
   const puedeIniciarTruco   = puedeTruco && !trucoCantado && !trucoPendiente && turno === 'yo'
-  const puedeRetruco        = puedeTruco && trucoCantado === 'truco'   && cantanteOriginalTruco === 'rival'
-  const puedeVale4          = puedeTruco && trucoCantado === 'retruco' && cantanteOriginalTruco === 'yo'
-  const puedeIniciarRetruco = puedeTruco && !trucoPendiente && trucoCantado === 'truco'   && cantanteOriginalTruco === 'rival'
-  const puedeIniciarVale4   = puedeTruco && !trucoPendiente && trucoCantado === 'retruco' && cantanteOriginalTruco === 'yo'
+  const cantanteEsRival     = cantanteOriginalTruco === 'rival' || cantanteOriginalTruco === 'rival_equipo'
+  const cantanteEsYo        = cantanteOriginalTruco === 'yo'    || cantanteOriginalTruco === 'yo_equipo'
+  const puedeRetruco        = puedeTruco && trucoCantado === 'truco'   && cantanteEsRival
+  const puedeVale4          = puedeTruco && trucoCantado === 'retruco' && cantanteEsYo
+  const puedeIniciarRetruco = puedeTruco && !trucoPendiente && trucoCantado === 'truco'   && cantanteEsRival
+  const puedeIniciarVale4   = puedeTruco && !trucoPendiente && trucoCantado === 'retruco' && cantanteEsYo
 
   // ── ESPERANDO (1vs1) ──
   if (pantalla === 'esperando') return (
@@ -516,39 +536,48 @@ export default function TrucoOnline({ modalidadFijada = null }) {
     const ambosCompletos = equipoA.length >= 2 && equipoB.length >= 2
 
     const PlayerRow = ({ jugador, color, empty }) => (
-      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl ${empty ? 'opacity-40' : ''}`}>
-        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold flex-shrink-0 ${empty ? 'border border-dashed border-gray-600 text-gray-600' : color === 'A' ? 'bg-purple-900/60 border border-purple-600/40 text-purple-200' : 'bg-red-900/60 border border-red-600/40 text-red-200'}`}>
+      <div className="h-12 flex items-center gap-3 px-3 rounded-xl flex-shrink-0">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-extrabold flex-shrink-0 transition-all ${
+          empty
+            ? 'border border-dashed border-gray-700 text-gray-700'
+            : color === 'A'
+              ? 'bg-purple-900/60 border border-purple-600/40 text-purple-200'
+              : 'bg-red-900/60 border border-red-600/40 text-red-200'
+        }`}>
           {empty ? '?' : (jugador?.nombre || '?').slice(0, 2).toUpperCase()}
         </div>
-        <span className={`text-sm font-semibold truncate ${empty ? 'text-gray-600 italic' : 'text-white'}`}>
+        <span className={`text-sm font-semibold truncate flex-1 transition-all ${empty ? 'text-gray-700 italic' : 'text-white'}`}>
           {empty ? 'Esperando...' : jugador?.nombre}
         </span>
-        {!empty && <span className={`ml-auto text-[10px] px-2 py-0.5 rounded-full font-semibold ${color === 'A' ? 'bg-purple-900/50 text-purple-300' : 'bg-red-900/50 text-red-300'}`}>En sala</span>}
+        {!empty && (
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${color === 'A' ? 'bg-purple-900/50 text-purple-300' : 'bg-red-900/50 text-red-300'}`}>
+            Listo
+          </span>
+        )}
       </div>
     )
 
     const TeamCard = ({ jugadores, label, color, equipo }) => {
       const lleno = jugadores.length >= 2
       return (
-        <div className={`flex-1 flex flex-col gap-3 bg-white/[0.03] border rounded-2xl p-5 transition-all ${lleno ? (color === 'A' ? 'border-purple-500/30' : 'border-red-500/30') : 'border-white/[0.07]'}`}>
+        <div className={`flex-1 flex flex-col gap-3 bg-white/[0.03] border rounded-2xl p-4 transition-all ${lleno ? (color === 'A' ? 'border-purple-500/30' : 'border-red-500/30') : 'border-white/[0.07]'}`}>
           <div className="flex items-center justify-between">
             <span className={`text-xs font-bold uppercase tracking-widest ${color === 'A' ? 'text-purple-400' : 'text-red-400'}`}>{label}</span>
-            <span className="text-[10px] text-gray-500 font-semibold">{jugadores.length}/2</span>
+            <span className={`text-[10px] font-bold tabular-nums ${lleno ? (color === 'A' ? 'text-purple-400' : 'text-red-400') : 'text-gray-600'}`}>{jugadores.length}/2</span>
           </div>
-          <div className="flex flex-col gap-1">
+          {/* Slots de altura fija — siempre 2 filas, sin crecer */}
+          <div className="flex flex-col gap-1" style={{ height: '104px' }}>
             {[0, 1].map(i => (
               <PlayerRow key={i} jugador={jugadores[i]} color={color} empty={!jugadores[i]} />
             ))}
           </div>
-          {!ambosCompletos && (
-            <button
-              onClick={() => sockRef.current?.emit('elegir_equipo', { salaId, equipo })}
-              disabled={lleno}
-              className={`mt-1 w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${color === 'A' ? 'bg-purple-600 hover:bg-purple-500 hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]' : 'bg-red-700 hover:bg-red-600 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)]'} text-white`}
-            >
-              {lleno ? 'Equipo lleno' : `Unirse a ${label}`}
-            </button>
-          )}
+          <button
+            onClick={() => sockRef.current?.emit('elegir_equipo', { salaId, equipo })}
+            disabled={lleno || ambosCompletos}
+            className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${color === 'A' ? 'bg-purple-600 hover:bg-purple-500 hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]' : 'bg-red-700 hover:bg-red-600 hover:shadow-[0_0_20px_rgba(239,68,68,0.2)]'} text-white`}
+          >
+            {ambosCompletos ? '¡Iniciando!' : lleno ? 'Equipo lleno' : `Unirse a ${label}`}
+          </button>
         </div>
       )
     }
@@ -833,7 +862,10 @@ export default function TrucoOnline({ modalidadFijada = null }) {
           miNombre={miNombre} miPhotoURL={usuario?.photoURL || ''}
           log={log} onEnviarMensaje={enviarMensaje}
           rondaTerminada={rondaTerminada} mostrandoMano={mostrandoMano}
-          globoYo={globoYo} globoRival={globoRival}
+          globoYo={globoYo}
+          globoPartner={globoPartner2v2}
+          globoRival1={globoRival1_2v2}
+          globoRival2={globoRival2_2v2}
           timerSeg={timerSeg}
         />
       ) : (
@@ -862,7 +894,7 @@ export default function TrucoOnline({ modalidadFijada = null }) {
           puedeVale4={puedeVale4} puedeIniciarRetruco={puedeIniciarRetruco}
           puedeIniciarVale4={puedeIniciarVale4} puedeSubirEnvido={puedeSubirEnvido}
           puedeSubirRealEnvido={puedeSubirRealEnvido} puedeSubirFaltaEnvido={puedeSubirFaltaEnvido}
-          nombreRival={nombreRival} inicialesRival={inicialesRival}
+          nombreRival={nombreRival} inicialesRival={inicialesRival} rivalUserId={rivalUserId}
           miNombre={miNombre} miPhotoURL={usuario?.photoURL || ''}
           rivalPhotoURL={rivalPhotoURL}
           resultadoUltimaMano={resultadoUltimaMano}

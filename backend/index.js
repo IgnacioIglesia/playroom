@@ -197,7 +197,7 @@ io.on('connection', (socket) => {
     const sala = salas[salaId]
     if (!sala || sala.modalidad !== '2vs2') return
 
-    const jugador = { id: socket.id, nombre: socket.nombre, userId: socket.userId }
+    const jugador = { id: socket.id, nombre: socket.nombre, userId: socket.userId, photoURL: socket.photoURL || '' }
 
     sala.equipoA = (sala.equipoA || []).filter(j => j.id !== socket.id)
     sala.equipoB = (sala.equipoB || []).filter(j => j.id !== socket.id)

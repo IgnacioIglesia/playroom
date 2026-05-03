@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CartaComp, CartaMuestra, BtnCanto, TanteadorPalillos } from './componentes'
+import { CartaComp, CartaMuestra, BtnCanto, TanteadorPalillos, PlayerPopup } from './componentes'
 import Avatar from '../../components/Avatar'
 
 function LogEntry({ msg, reciente }) {
@@ -42,7 +42,7 @@ export default function MesaTruco({
   puedeIniciarRetruco, puedeIniciarVale4,
   puedeSubirEnvido, puedeSubirRealEnvido, puedeSubirFaltaEnvido,
   nombreRival, inicialesRival,
-  miNombre, miPhotoURL, rivalPhotoURL,
+  miNombre, miPhotoURL, rivalPhotoURL, rivalUserId,
   florJ, florM, florCantada,
   mostrarCartasRival,
   nivelEnvido,
@@ -54,7 +54,8 @@ export default function MesaTruco({
   onEnviarMensaje,
   onSubirEnvidoConNivel,
 }) {
-  const [chatInput, setChatInput] = useState('')
+  const [chatInput, setChatInput]         = useState('')
+  const [popupRival, setPopupRival]       = useState(false)
 
   const enviar = () => {
     const txt = chatInput.trim()
@@ -165,19 +166,34 @@ export default function MesaTruco({
         </div>
 
         {/* Avatar rival */}
-        <div className="flex flex-col items-center gap-1" style={{ zIndex: 20 }}>
+        <div className="flex flex-col items-center gap-1 relative" style={{ zIndex: 20 }}>
           <div className="relative">
-            {rivalPhotoURL
-              ? <img src={rivalPhotoURL} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-red-600" />
-              : <div className="w-12 h-12 rounded-full bg-red-900 border-2 border-red-600 flex items-center justify-center">
-                  <span className="text-white font-extrabold text-lg">{inicialesRival}</span>
-                </div>
-            }
+            <button
+              onClick={() => setPopupRival(v => !v)}
+              className="cursor-pointer hover:opacity-80 transition-opacity focus:outline-none"
+              title="Ver perfil"
+            >
+              {rivalPhotoURL
+                ? <img src={rivalPhotoURL} alt="" className="w-12 h-12 rounded-full object-cover border-2 border-red-600" />
+                : <div className="w-12 h-12 rounded-full bg-red-900 border-2 border-red-600 flex items-center justify-center">
+                    <span className="text-white font-extrabold text-lg">{inicialesRival}</span>
+                  </div>
+              }
+            </button>
             {globoRival && (
               <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gray-700 border border-gray-500 text-white text-xs px-3 py-1.5 rounded-2xl shadow-lg max-w-[200px] z-30 whitespace-nowrap">
                 {globoRival}
                 <div className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 bg-gray-700 border-l border-b border-gray-500 rotate-45" />
               </div>
+            )}
+            {popupRival && (
+              <PlayerPopup
+                userId={rivalUserId}
+                nombre={nombreRival}
+                photoURL={rivalPhotoURL}
+                onClose={() => setPopupRival(false)}
+                className="top-full mt-2 left-1/2 -translate-x-1/2"
+              />
             )}
           </div>
           <span className="text-gray-400 text-xs font-semibold">{nombreRival}</span>
