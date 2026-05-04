@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import { useNavigationGuard } from '../context/NavigationGuardContext'
+import EmptyState from '../components/EmptyState'
 import { db } from '../firebase'
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore'
 
@@ -651,7 +652,7 @@ export default function Sudoku() {
                 {!usuario && <span className="text-[10px] text-purple-400 border border-purple-700/30 bg-purple-950/40 px-2 py-0.5 rounded-full">Iniciá sesión para aparecer aquí</span>}
               </div>
               {ranking.length === 0 ? (
-                <p className="text-gray-600 text-sm text-center py-4">Todavía no hay puntuaciones. ¡Sé el primero!</p>
+                <EmptyState icon="chart" title="Sin puntuaciones todavía" description="Completá un Sudoku para aparecer aquí." size="sm" />
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {ranking.map((entry, i) => (

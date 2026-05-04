@@ -291,7 +291,7 @@ export default function MesaTruco2v2({
             </div>
 
             {/* Mesa body — cross layout with absolute positioning */}
-            <div className="relative" style={{ height: '420px' }}>
+            <div className="relative h-[280px] sm:h-[360px] lg:h-[420px]">
 
               {/* Muestra — top left */}
               <div className="absolute top-3 left-3 flex flex-col items-center gap-0.5 z-10">

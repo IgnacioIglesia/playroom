@@ -129,7 +129,7 @@ const juegos = [
     ruta: null,
   },
   {
-    nombre: 'MAyor o Menor',
+    nombre: 'Mayor o Menor',
     imagen: '/juegos/mayormenor.svg',
     descripcion: '¿Cuál gana? Elegí rápido',
     estado: 'Próximamente',

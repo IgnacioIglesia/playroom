@@ -4,6 +4,7 @@ import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firesto
 import { db } from '../firebase'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import EmptyState from '../components/EmptyState'
 
 const DIFF_LABEL = {
   facil: 'Fácil', medio: 'Medio', dificil: 'Difícil',
@@ -137,11 +138,7 @@ export default function PerfilPublico() {
               <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
             </div>
           ) : noExiste ? (
-            <div className="text-center py-24 flex flex-col items-center gap-4">
-              <span className="text-5xl opacity-20">👤</span>
-              <p className="text-gray-400 font-semibold">Perfil no encontrado</p>
-              <p className="text-gray-600 text-sm">Este jugador todavía no tiene un perfil público.</p>
-            </div>
+            <EmptyState icon="user" title="Perfil no encontrado" description="Este jugador todavía no tiene un perfil público." action={{ label: 'Volver al inicio', to: '/' }} size="lg" />
           ) : (
             <>
               {/* Header */}
@@ -190,7 +187,7 @@ export default function PerfilPublico() {
                           <div className="h-full bg-purple-500 rounded-full" style={{ width: `${Math.round(stats.truco.victorias / stats.truco.partidas * 100)}%` }} />
                         </div>
                       </div>
-                    ) : <p className="text-gray-600 text-xs">Sin partidas</p>}
+                    ) : <p className="text-gray-600 text-xs italic">Sin partidas aún</p>}
                   </div>
 
                   {/* Sudoku */}
@@ -207,7 +204,7 @@ export default function PerfilPublico() {
                           <Row label="Dificultad" value={DIFF_LABEL[stats.sudoku.mejorDificultad] || stats.sudoku.mejorDificultad} color={DIFF_COLOR[stats.sudoku.mejorDificultad]} />
                         )}
                       </div>
-                    ) : <p className="text-gray-600 text-xs">Sin partidas</p>}
+                    ) : <p className="text-gray-600 text-xs italic">Sin partidas aún</p>}
                   </div>
 
                   {/* Buscaminas */}
@@ -224,7 +221,7 @@ export default function PerfilPublico() {
                           <Row label="Dificultad" value={DIFF_LABEL[stats.buscaminas.mejorDificultad] || stats.buscaminas.mejorDificultad} color={DIFF_COLOR[stats.buscaminas.mejorDificultad]} />
                         )}
                       </div>
-                    ) : <p className="text-gray-600 text-xs">Sin partidas</p>}
+                    ) : <p className="text-gray-600 text-xs italic">Sin partidas aún</p>}
                   </div>
                 </div>
               </div>
@@ -258,10 +255,7 @@ export default function PerfilPublico() {
               )}
 
               {totalPartidas === 0 && (
-                <div className="text-center py-12 flex flex-col items-center gap-3">
-                  <span className="text-4xl opacity-20">🎮</span>
-                  <p className="text-gray-500 text-sm">Este jugador todavía no tiene partidas registradas.</p>
-                </div>
+                <EmptyState icon="gamepad" title="Sin partidas registradas" description="Este jugador todavía no tiene partidas guardadas." />
               )}
             </>
           )}

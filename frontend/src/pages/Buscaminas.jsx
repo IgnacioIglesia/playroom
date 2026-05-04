@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import { useNavigationGuard } from '../context/NavigationGuardContext'
+import EmptyState from '../components/EmptyState'
 import { db } from '../firebase'
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore'
 
@@ -309,7 +310,7 @@ export default function Buscaminas() {
               {!usuario && <span className="text-[10px] text-purple-400 border border-purple-700/30 bg-purple-950/40 px-2 py-0.5 rounded-full">Iniciá sesión para aparecer</span>}
             </div>
             {ranking.length === 0
-              ? <p className="text-gray-600 text-sm text-center py-3">¡Sé el primero en el ranking!</p>
+              ? <EmptyState icon="gamepad" title="Sin puntuaciones todavía" description="Ganá una partida para aparecer aquí." size="sm" />
               : <div className="flex flex-col gap-1.5">
                   {ranking.map((e, i) => (
                     <div key={e.id} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl ${usuario?.uid === e.uid ? 'bg-purple-950/40 border border-purple-700/25' : 'bg-white/[0.02]'}`}>

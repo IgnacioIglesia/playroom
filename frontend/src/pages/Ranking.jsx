@@ -3,6 +3,7 @@ import { db } from '../firebase'
 import { collection, getDocs } from 'firebase/firestore'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
+import EmptyState from '../components/EmptyState'
 
 const DIFF_COLOR = {
   facil: 'text-green-400', medio: 'text-blue-400', dificil: 'text-yellow-400',
@@ -116,11 +117,12 @@ export default function Ranking() {
               <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
             </div>
           ) : ranking.length === 0 ? (
-            <div className="text-center py-20 flex flex-col items-center gap-4">
-              <span className="text-5xl opacity-20">{juego.icono}</span>
-              <p className="text-gray-500">No hay puntuaciones todavía.</p>
-              <p className="text-gray-600 text-sm">¡Jugá para aparecer acá!</p>
-            </div>
+            <EmptyState
+              icon={juego.tipo === 'victorias' ? 'cards' : juego.id === 'sudoku' ? 'chart' : 'gamepad'}
+              title="Nadie en el ranking todavía"
+              description={`Sé el primero en aparecer. Jugá ${juego.nombre} para sumar puntos.`}
+              action={{ label: `Jugar ${juego.nombre}`, to: juego.id === 'truco' ? '/juegos/truco-online' : `/juegos/${juego.id}` }}
+            />
           ) : juego.tipo === 'victorias' ? (
 
             /* ── Truco ── */

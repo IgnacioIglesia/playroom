@@ -4,6 +4,7 @@ import { updateProfile } from 'firebase/auth'
 import { doc, setDoc, getDoc, collection, getDocs, query, where, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { useAuth } from '../context/AuthContext'
+import EmptyState from '../components/EmptyState'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import Avatar from '../components/Avatar'
@@ -278,7 +279,7 @@ export default function Perfil() {
                             </div>
                           </div>
                         ) : (
-                          <p className="text-gray-600 text-xs">Sin partidas</p>
+                          <p className="text-gray-600 text-xs italic">Sin partidas aún</p>
                         )}
                       </div>
 
@@ -308,7 +309,7 @@ export default function Perfil() {
                             )}
                           </div>
                         ) : (
-                          <p className="text-gray-600 text-xs">Sin partidas</p>
+                          <p className="text-gray-600 text-xs italic">Sin partidas aún</p>
                         )}
                       </div>
 
@@ -338,7 +339,7 @@ export default function Perfil() {
                             )}
                           </div>
                         ) : (
-                          <p className="text-gray-600 text-xs">Sin partidas</p>
+                          <p className="text-gray-600 text-xs italic">Sin partidas aún</p>
                         )}
                       </div>
                     </div>
@@ -395,10 +396,7 @@ export default function Perfil() {
                   <div className="w-7 h-7 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
                 </div>
               ) : historial.length === 0 ? (
-                <div className="text-center py-12 flex flex-col items-center gap-3">
-                  <span className="text-4xl opacity-20">🎮</span>
-                  <p className="text-gray-500 text-sm">Todavía no jugaste ninguna partida.</p>
-                </div>
+                <EmptyState icon="history" title="Sin actividad todavía" description="Jugá una partida para ver tu historial acá." action={{ label: 'Ir a jugar', to: '/juegos' }} />
               ) : (
                 <div className="flex flex-col gap-1.5">
                   {historial.map((e, i) => <HistorialRow key={i} entry={e} />)}
