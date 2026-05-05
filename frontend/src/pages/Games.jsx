@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import Navbar from '../components/Navbar'
 import CatalogoJuegos from '../components/CatalogoJuegos'
 import Footer from '../components/Footer'
+import UnirseConCodigoModal from '../components/UnirseConCodigoModal'
 
 function Games() {
+  const [modalAbierto, setModalAbierto] = useState(false)
+
   return (
     <div className="min-h-screen bg-[#07070f] text-white flex flex-col">
       <Navbar />
@@ -21,7 +25,10 @@ function Games() {
               Creá una sala y jugá con tus amigos en segundos. Sin descargas.
             </p>
           </div>
-          <button className="flex-shrink-0 flex items-center gap-2 border border-white/10 hover:border-purple-500/40 bg-white/[0.04] hover:bg-white/[0.07] text-gray-300 hover:text-white px-5 py-3 rounded-xl text-sm font-semibold transition-all">
+          <button
+            onClick={() => setModalAbierto(true)}
+            className="flex-shrink-0 flex items-center gap-2 border border-white/10 hover:border-purple-500/40 bg-white/[0.04] hover:bg-white/[0.07] text-gray-300 hover:text-white px-5 py-3 rounded-xl text-sm font-semibold transition-all"
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-4 h-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
             </svg>
@@ -32,6 +39,8 @@ function Games() {
 
       <CatalogoJuegos />
       <Footer />
+
+      {modalAbierto && <UnirseConCodigoModal onClose={() => setModalAbierto(false)} />}
     </div>
   )
 }

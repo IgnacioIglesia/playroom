@@ -439,7 +439,7 @@ export default function Perfil() {
                     return (
                       <button key={url} onClick={() => { setAvatarSel(url); setUrlCustom('') }}
                         className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${sel ? 'border-purple-500 scale-105 shadow-lg shadow-purple-900/50' : 'border-white/[0.08] hover:border-white/[0.20]'}`}>
-                        <img src={url} alt="" className="w-full h-full object-cover bg-gray-900" />
+                        <img src={url} alt="" className="w-full h-full object-cover bg-[#07070f]" />
                       </button>
                     )
                   })}

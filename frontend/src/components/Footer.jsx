@@ -12,7 +12,7 @@ export default function Footer() {
         {/* Marca */}
         <div className="flex flex-col gap-3">
           <button onClick={() => navigate('/')} className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 bg-purple-600 rounded-xl flex items-center justify-center text-white font-black text-sm group-hover:bg-purple-500 transition">P</div>
+            <img src="/favicon.svg" alt="PlayRoom" className="w-8 h-8 group-hover:opacity-80 transition" />
             <span className="text-base font-black text-white">Play<span className="text-purple-400">Room</span></span>
           </button>
           <p className="text-gray-600 text-xs max-w-[200px] leading-relaxed">

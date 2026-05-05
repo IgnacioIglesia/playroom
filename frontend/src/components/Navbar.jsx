@@ -23,6 +23,7 @@ function Navbar() {
   const location   = useLocation()
   const { usuario } = useAuth()
   const [menuAbierto, setMenuAbierto]   = useState(false)
+  const [mobileOpen, setMobileOpen]     = useState(false)
   const [pendingRoute, setPendingRoute] = useState(null)
   const menuRef = useRef(null)
   const { guard, clearGuard } = useNavigationGuard()
@@ -32,6 +33,7 @@ function Navbar() {
 
   const handleNavigate = (ruta) => {
     setMenuAbierto(false)
+    setMobileOpen(false)
     if (guard) {
       setPendingRoute(ruta)
     } else {
@@ -49,6 +51,7 @@ function Navbar() {
 
   const handleLogout = async () => {
     setMenuAbierto(false)
+    setMobileOpen(false)
     clearGuard()
     await signOut(auth)
     navigate('/')
@@ -62,6 +65,10 @@ function Navbar() {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [location.pathname])
+
   const links = [
     { label: 'Inicio',  ruta: '/'        },
     { label: 'Juegos',  ruta: '/juegos'  },
@@ -70,111 +77,200 @@ function Navbar() {
 
   return (
     <>
-    <nav className="sticky top-0 z-50 h-14 flex items-center px-4 md:px-8 border-b border-white/[0.06] bg-[#07070f]/90 backdrop-blur-md">
+    <div className="sticky top-0 z-50">
+      <nav className="h-14 flex items-center px-4 md:px-8 border-b border-white/[0.06] bg-[#07070f]/90 backdrop-blur-md">
 
-      {/* Logo */}
-      <button
-        onClick={() => handleNavigate('/')}
-        className="flex items-center gap-2 bg-transparent border-none flex-shrink-0 group"
-      >
-        <div className="w-7 h-7 bg-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-bold group-hover:bg-purple-500 transition">P</div>
-        <span className="text-base font-bold text-white">Play<span className="text-purple-400">Room</span></span>
-      </button>
+        {/* Logo */}
+        <button
+          onClick={() => handleNavigate('/')}
+          className="flex items-center gap-2 bg-transparent border-none flex-shrink-0 group"
+        >
+          <img src="/favicon.svg" alt="PlayRoom" className="w-7 h-7 group-hover:opacity-80 transition" />
+          <span className="text-base font-bold text-white">Play<span className="text-purple-400">Room</span></span>
+        </button>
 
-      {/* Nav links — desktop */}
-      <div className="hidden md:flex items-center gap-1 ml-8">
-        {links.map(({ label, ruta }) => (
-          <button
-            key={ruta}
-            onClick={() => handleNavigate(ruta)}
-            className={`relative text-sm px-3 py-1.5 rounded-lg transition-colors ${
-              isActive(ruta)
-                ? 'text-white'
-                : 'text-gray-500 hover:text-gray-200'
-            }`}
-          >
-            {label}
-            {isActive(ruta) && (
-              <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-purple-400" />
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Right side */}
-      <div className="ml-auto">
-        {usuario ? (
-          <div className="relative" ref={menuRef}>
+        {/* Nav links — desktop */}
+        <div className="hidden md:flex items-center gap-1 ml-8">
+          {links.map(({ label, ruta }) => (
             <button
-              onClick={() => setMenuAbierto(v => !v)}
-              className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-xl hover:bg-white/[0.06] transition border border-transparent hover:border-white/[0.08]"
+              key={ruta}
+              onClick={() => handleNavigate(ruta)}
+              className={`relative text-sm px-3 py-1.5 rounded-lg transition-colors ${
+                isActive(ruta)
+                  ? 'text-white'
+                  : 'text-gray-500 hover:text-gray-200'
+              }`}
             >
-              <Avatar usuario={usuario} size="sm" />
-              <span className="hidden md:block text-sm text-gray-300 max-w-[120px] truncate">
-                {usuario.displayName || usuario.email?.split('@')[0]}
-              </span>
-              <svg
-                className={`w-3 h-3 text-gray-600 transition-transform duration-200 ${menuAbierto ? 'rotate-180' : ''}`}
-                fill="none" viewBox="0 0 24 24" stroke="currentColor"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-              </svg>
+              {label}
+              {isActive(ruta) && (
+                <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-purple-400" />
+              )}
             </button>
+          ))}
+        </div>
 
-            {menuAbierto && (
-              <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-white/[0.08] bg-[#0f0f1a]/95 backdrop-blur-md shadow-2xl shadow-black/60 overflow-hidden">
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06]">
-                  <Avatar usuario={usuario} size="md" />
-                  <div className="min-w-0">
-                    <p className="text-white text-sm font-semibold truncate">
-                      {usuario.displayName || 'Usuario'}
-                    </p>
-                    <p className="text-gray-500 text-xs truncate">{usuario.email}</p>
+        {/* Right side */}
+        <div className="ml-auto flex items-center gap-2">
+
+          {/* Desktop user area */}
+          <div className="hidden md:block">
+            {usuario ? (
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => setMenuAbierto(v => !v)}
+                  className="flex items-center gap-2 pl-1.5 pr-2.5 py-1 rounded-xl hover:bg-white/[0.06] transition border border-transparent hover:border-white/[0.08]"
+                >
+                  <Avatar usuario={usuario} size="sm" />
+                  <span className="text-sm text-gray-300 max-w-[120px] truncate">
+                    {usuario.displayName || usuario.email?.split('@')[0]}
+                  </span>
+                  <svg
+                    className={`w-3 h-3 text-gray-600 transition-transform duration-200 ${menuAbierto ? 'rotate-180' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {menuAbierto && (
+                  <div className="absolute right-0 mt-2 w-52 rounded-2xl border border-white/[0.08] bg-[#0f0f1a]/95 backdrop-blur-md shadow-2xl shadow-black/60 overflow-hidden">
+                    <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06]">
+                      <Avatar usuario={usuario} size="md" />
+                      <div className="min-w-0">
+                        <p className="text-white text-sm font-semibold truncate">
+                          {usuario.displayName || 'Usuario'}
+                        </p>
+                        <p className="text-gray-500 text-xs truncate">{usuario.email}</p>
+                      </div>
+                    </div>
+                    <div className="p-1">
+                      <button
+                        onClick={() => handleNavigate('/perfil')}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/[0.05] rounded-xl transition"
+                      >
+                        <IconUser />
+                        Mi perfil
+                      </button>
+                    </div>
+                    <div className="h-px bg-white/[0.06] mx-2" />
+                    <div className="p-1">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/[0.08] rounded-xl transition"
+                      >
+                        <IconLogout />
+                        Cerrar sesión
+                      </button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="p-1">
-                  <button
-                    onClick={() => handleNavigate('/perfil')}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-white/[0.05] rounded-xl transition"
-                  >
-                    <IconUser />
-                    Mi perfil
-                  </button>
-                </div>
-
-                <div className="h-px bg-white/[0.06] mx-2" />
-
-                <div className="p-1">
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-500/[0.08] rounded-xl transition"
-                  >
-                    <IconLogout />
-                    Cerrar sesión
-                  </button>
-                </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleNavigate('/login')}
+                  className="text-gray-400 hover:text-white text-sm transition px-3 py-1.5 rounded-lg hover:bg-white/[0.05]"
+                >
+                  Iniciar sesión
+                </button>
+                <button
+                  onClick={() => handleNavigate('/registro')}
+                  className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-xl text-sm font-semibold transition hover:shadow-[0_0_20px_rgba(139,92,246,0.35)]"
+                >
+                  Registrarse
+                </button>
               </div>
             )}
           </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => handleNavigate('/login')}
-              className="text-gray-400 hover:text-white text-sm transition px-3 py-1.5 rounded-lg hover:bg-white/[0.05]"
-            >
-              Iniciar sesión
-            </button>
-            <button
-              onClick={() => handleNavigate('/registro')}
-              className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-1.5 rounded-xl text-sm font-semibold transition hover:shadow-[0_0_20px_rgba(139,92,246,0.35)]"
-            >
-              Registrarse
-            </button>
+
+          {/* Hamburger — mobile only */}
+          <button
+            className="md:hidden p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/[0.06] transition"
+            onClick={() => setMobileOpen(v => !v)}
+            aria-label="Menú"
+          >
+            {mobileOpen ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+              </svg>
+            )}
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile menu panel */}
+      {mobileOpen && (
+        <div className="md:hidden bg-[#07070f]/97 backdrop-blur-md border-b border-white/[0.06]">
+          <div className="px-4 py-3 flex flex-col gap-1">
+
+            {/* Navigation links */}
+            {links.map(({ label, ruta }) => (
+              <button
+                key={ruta}
+                onClick={() => handleNavigate(ruta)}
+                className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-semibold transition-all text-left ${
+                  isActive(ruta)
+                    ? 'bg-purple-950/50 border border-purple-700/30 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-white/[0.05]'
+                }`}
+              >
+                {isActive(ruta) && <span className="w-1 h-1 rounded-full bg-purple-400 flex-shrink-0" />}
+                {label}
+              </button>
+            ))}
+
+            <div className="h-px bg-white/[0.06] my-1" />
+
+            {/* User section */}
+            {usuario ? (
+              <>
+                <div className="flex items-center gap-3 px-3 py-2.5">
+                  <Avatar usuario={usuario} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-white text-sm font-semibold truncate">{usuario.displayName || 'Usuario'}</p>
+                    <p className="text-gray-600 text-xs truncate">{usuario.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleNavigate('/perfil')}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-gray-400 hover:text-white hover:bg-white/[0.05] transition text-left"
+                >
+                  <IconUser />
+                  Mi perfil
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm text-red-400 hover:text-red-300 hover:bg-red-500/[0.08] transition text-left"
+                >
+                  <IconLogout />
+                  Cerrar sesión
+                </button>
+              </>
+            ) : (
+              <div className="flex flex-col gap-2 pt-1">
+                <button
+                  onClick={() => handleNavigate('/login')}
+                  className="w-full py-2.5 rounded-xl border border-white/[0.08] text-gray-300 hover:text-white text-sm font-semibold transition hover:bg-white/[0.05]"
+                >
+                  Iniciar sesión
+                </button>
+                <button
+                  onClick={() => handleNavigate('/registro')}
+                  className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold transition"
+                >
+                  Registrarse
+                </button>
+              </div>
+            )}
+
           </div>
-        )}
-      </div>
-    </nav>
+        </div>
+      )}
+    </div>
 
     {/* Modal confirmación salir de partida */}
     {pendingRoute && (

@@ -87,10 +87,10 @@ const juegos = [
     nombre: 'Solitario',
     imagen: '/juegos/solitario.svg',
     descripcion: 'El clásico juego de cartas. Ordená todas las cartas por palo.',
-    estado: 'Próximamente',
+    estado: 'Disponible',
     jugadores: '1',
     categoria: 'Cartas',
-    ruta: null,
+    ruta: '/juegos/solitario',
   },
   {
     nombre: 'Crucigrama',
@@ -232,10 +232,10 @@ function CatalogoJuegos() {
               >
                 <div className="h-40 flex items-center justify-center relative overflow-hidden rounded-t-2xl" style={{ background: 'linear-gradient(135deg, rgba(30,30,40,0.8) 0%, rgba(20,20,30,0.9) 100%)' }}>
                   <img src={juego.imagen} alt={juego.nombre} className="w-full h-full object-contain p-6 grayscale opacity-40" />
-                  <span className="absolute top-3 left-3 text-[10px] px-2.5 py-1 rounded-full font-semibold bg-gray-800 text-gray-400 border border-gray-700">
+                  <span className="absolute top-3 left-3 text-[10px] px-2.5 py-1 rounded-full font-semibold bg-white/[0.04] text-gray-500 border border-white/[0.07]">
                     {juego.categoria}
                   </span>
-                  <span className="absolute top-3 right-3 text-[10px] px-2.5 py-1 rounded-full font-semibold bg-gray-800 text-gray-400 border border-gray-700">
+                  <span className="absolute top-3 right-3 text-[10px] px-2.5 py-1 rounded-full font-semibold bg-white/[0.04] text-gray-500 border border-white/[0.07]">
                     Próximamente
                   </span>
                 </div>

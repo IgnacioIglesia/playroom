@@ -1,0 +1,164 @@
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
+
+/*
+  Formato de código por juego:
+  - Truco Online : 4 letras mayúsculas  (ej: ABCD)
+  — Agregar nuevos juegos acá cuando corresponda
+*/
+const JUEGOS = [
+  {
+    nombre: 'Truco Online',
+    icono: '🃏',
+    categoria: 'Cartas · 2–4 jugadores',
+    pattern: /^[A-Z]{4}$/,
+    hint: '4 letras — ej: ABCD',
+    ruta: (codigo) => `/unirse/${codigo}`,
+    maxLen: 4,
+    transform: (v) => v.toUpperCase().replace(/[^A-Z]/g, ''),
+  },
+]
+
+function detectarJuego(codigo) {
+  return JUEGOS.find(j => j.pattern.test(codigo))
+}
+
+export default function UnirseConCodigoModal({ onClose }) {
+  const [codigo, setCodigo]         = useState('')
+  const [juego, setJuego]           = useState(null)
+  const [shake, setShake]           = useState(false)
+  const inputRef                    = useRef(null)
+  const navigate                    = useNavigate()
+
+  useEffect(() => {
+    inputRef.current?.focus()
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  const handleChange = (e) => {
+    const raw = e.target.value
+    // find which game this input could belong to based on length
+    const candidato = JUEGOS.find(j => raw.replace(/[^A-Za-z0-9]/g, '').length <= j.maxLen)
+    const transformado = candidato
+      ? candidato.transform(raw).slice(0, candidato.maxLen)
+      : raw.toUpperCase().slice(0, 8)
+    setCodigo(transformado)
+    setJuego(detectarJuego(transformado))
+  }
+
+  const handleUnirse = () => {
+    if (!juego) {
+      setShake(true)
+      setTimeout(() => setShake(false), 500)
+      return
+    }
+    onClose()
+    navigate(juego.ruta(codigo))
+  }
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleUnirse()
+  }
+
+  const estadoCodigo =
+    codigo.length === 0   ? 'empty'
+    : juego               ? 'valid'
+    :                       'invalid'
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <div className="relative z-10 bg-[#0d0d1a] border border-white/[0.09] rounded-3xl p-7 w-full max-w-sm flex flex-col gap-6 shadow-2xl shadow-black/60">
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-extrabold text-white">Unirse con código</h2>
+            <p className="text-gray-500 text-xs mt-0.5">Ingresá el código que te compartieron</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl flex items-center justify-center text-gray-600 hover:text-white hover:bg-white/[0.07] transition"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Input */}
+        <div className="flex flex-col gap-2">
+          <input
+            ref={inputRef}
+            value={codigo}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Código de sala"
+            className={`w-full bg-white/[0.04] border rounded-2xl px-5 py-4 text-white text-center text-3xl font-mono tracking-[0.35em] font-extrabold focus:outline-none transition-all placeholder-gray-700 placeholder:text-lg placeholder:tracking-normal ${
+              estadoCodigo === 'valid'   ? 'border-green-500/50 focus:border-green-500/70' :
+              estadoCodigo === 'invalid' ? `border-red-500/40 focus:border-red-500/60 ${shake ? 'animate-[shake_0.4s_ease]' : ''}` :
+                                          'border-white/[0.08] focus:border-purple-500/50'
+            }`}
+          />
+
+          {/* Detection feedback */}
+          <div className={`flex items-center gap-2 px-1 transition-all duration-200 ${codigo.length === 0 ? 'opacity-0' : 'opacity-100'}`}>
+            {estadoCodigo === 'valid' && (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 text-green-400 flex-shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                <span className="text-green-400 text-xs font-semibold">{juego.icono} Código de {juego.nombre}</span>
+              </>
+            )}
+            {estadoCodigo === 'invalid' && (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 text-gray-600 flex-shrink-0">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                </svg>
+                <span className="text-gray-600 text-xs">Formato no reconocido</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Formats reference */}
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[10px] font-semibold text-gray-600 uppercase tracking-widest">Formatos disponibles</p>
+          <div className="flex flex-col gap-1">
+            {JUEGOS.map(j => (
+              <div key={j.nombre} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">{j.icono}</span>
+                  <div>
+                    <p className="text-xs font-semibold text-gray-300">{j.nombre}</p>
+                    <p className="text-[10px] text-gray-600">{j.categoria}</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono text-gray-500 bg-white/[0.04] px-2 py-1 rounded-lg border border-white/[0.06]">{j.hint}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Action */}
+        <button
+          onClick={handleUnirse}
+          disabled={estadoCodigo !== 'valid'}
+          className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-30 disabled:cursor-not-allowed text-white py-3.5 rounded-2xl font-bold transition-all hover:shadow-[0_0_24px_rgba(139,92,246,0.35)] text-sm"
+        >
+          {juego ? `Unirse a ${juego.nombre} →` : 'Unirse →'}
+        </button>
+
+      </div>
+    </div>
+  )
+}
