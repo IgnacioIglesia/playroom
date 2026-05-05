@@ -50,11 +50,11 @@ const juegos = [
   {
     nombre: 'Poker',
     imagen: '/juegos/poker.svg',
-    descripcion: 'Estrategia, paciencia y mente fría. ¿Tenés lo que se necesita?',
-    estado: 'Próximamente',
-    jugadores: '6',
+    descripcion: 'Texas Hold\'em online. Creá una sala o entrá con código.',
+    estado: 'Disponible',
+    jugadores: '3-6',
     categoria: 'Cartas',
-    ruta: null,
+    ruta: '/juegos/poker',
   },
   {
     nombre: 'Trivia',
@@ -104,11 +104,11 @@ const juegos = [
   {
     nombre: 'Adivina la Palabra',
     imagen: '/juegos/palabras.svg',
-    descripcion: 'Una palabra, pocos intentos. ¿Podés adivinarla?',
-    estado: 'Próximamente',
+    descripcion: 'Una palabra diaria, seis intentos y rachas en el ranking.',
+    estado: 'Disponible',
     jugadores: '1',
     categoria: 'Palabras',
-    ruta: null,
+    ruta: '/juegos/palabras',
   },
   {
     nombre: 'Uno',

@@ -4,18 +4,30 @@ import { useNavigate } from 'react-router-dom'
 /*
   Formato de código por juego:
   - Truco Online : 4 letras mayúsculas  (ej: ABCD)
-  — Agregar nuevos juegos acá cuando corresponda
+  - Poker        : 4 dígitos numéricos  (ej: 1234)
 */
 const JUEGOS = [
   {
     nombre: 'Truco Online',
-    icono: '🃏',
+    icono: 'TR',
     categoria: 'Cartas · 2–4 jugadores',
     pattern: /^[A-Z]{4}$/,
     hint: '4 letras — ej: ABCD',
     ruta: (codigo) => `/unirse/${codigo}`,
     maxLen: 4,
+    charType: 'letter',
     transform: (v) => v.toUpperCase().replace(/[^A-Z]/g, ''),
+  },
+  {
+    nombre: 'Poker',
+    icono: 'PK',
+    categoria: 'Cartas · 2–4 jugadores',
+    pattern: /^[0-9]{4}$/,
+    hint: '4 dígitos — ej: 1234',
+    ruta: (codigo) => `/juegos/poker?sala=${codigo}`,
+    maxLen: 4,
+    charType: 'digit',
+    transform: (v) => v.replace(/[^0-9]/g, ''),
   },
 ]
 
@@ -39,11 +51,13 @@ export default function UnirseConCodigoModal({ onClose }) {
 
   const handleChange = (e) => {
     const raw = e.target.value
-    // find which game this input could belong to based on length
-    const candidato = JUEGOS.find(j => raw.replace(/[^A-Za-z0-9]/g, '').length <= j.maxLen)
-    const transformado = candidato
-      ? candidato.transform(raw).slice(0, candidato.maxLen)
-      : raw.toUpperCase().slice(0, 8)
+    // Detect game type by character: letters → Truco, digits → Poker
+    const firstChar = raw.replace(/\s/g, '')[0] ?? ''
+    const candidato = firstChar
+      ? JUEGOS.find(j => j.charType === 'digit' ? /[0-9]/.test(firstChar) : /[A-Za-z]/.test(firstChar))
+        ?? JUEGOS[0]
+      : JUEGOS[0]
+    const transformado = candidato.transform(raw).slice(0, candidato.maxLen)
     setCodigo(transformado)
     setJuego(detectarJuego(transformado))
   }
@@ -116,7 +130,7 @@ export default function UnirseConCodigoModal({ onClose }) {
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 text-green-400 flex-shrink-0">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
-                <span className="text-green-400 text-xs font-semibold">{juego.icono} Código de {juego.nombre}</span>
+                <span className="text-green-400 text-xs font-semibold">Código de {juego.nombre}</span>
               </>
             )}
             {estadoCodigo === 'invalid' && (
@@ -137,7 +151,7 @@ export default function UnirseConCodigoModal({ onClose }) {
             {JUEGOS.map(j => (
               <div key={j.nombre} className="flex items-center justify-between px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">{j.icono}</span>
+                  <span className="w-7 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 text-purple-200 text-[10px] font-extrabold flex items-center justify-center">{j.icono}</span>
                   <div>
                     <p className="text-xs font-semibold text-gray-300">{j.nombre}</p>
                     <p className="text-[10px] text-gray-600">{j.categoria}</p>

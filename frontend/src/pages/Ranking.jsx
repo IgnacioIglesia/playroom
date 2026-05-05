@@ -18,6 +18,7 @@ const JUEGOS = [
   { id: 'truco',      nombre: 'Truco',      icono: '🃏', coleccion: 'ranking_truco',      tipo: 'victorias'  },
   { id: 'sudoku',     nombre: 'Sudoku',     icono: '🔢', coleccion: 'ranking_sudoku',     tipo: 'puntuacion' },
   { id: 'buscaminas', nombre: 'Buscaminas', icono: '💣', coleccion: 'ranking_buscaminas', tipo: 'puntuacion' },
+  { id: 'palabras',   nombre: 'Palabras',   icono: '▦',  coleccion: 'ranking_palabras',   tipo: 'racha' },
 ]
 
 function formatTiempo(s) {
@@ -54,6 +55,20 @@ export default function Ranking() {
             .sort((a, b) => b.victorias - a.victorias || b.winrate - a.winrate)
             .slice(0, 10)
           setRanking(lista)
+        } else if (juego.tipo === 'racha') {
+          const lista = []
+          snap.forEach(doc => {
+            const d = doc.data()
+            lista.push({
+              nombre: d.nombre || 'Jugador',
+              racha: d.racha || 0,
+              mejorRacha: d.mejorRacha || d.racha || 0,
+              totalAciertos: d.totalAciertos || 0,
+              lastSolvedDate: d.lastSolvedDate,
+            })
+          })
+          lista.sort((a, b) => b.racha - a.racha || b.mejorRacha - a.mejorRacha || b.totalAciertos - a.totalAciertos)
+          setRanking(lista.slice(0, 10))
         } else {
           const porUsuario = {}
           snap.forEach(doc => {
@@ -118,7 +133,7 @@ export default function Ranking() {
             </div>
           ) : ranking.length === 0 ? (
             <EmptyState
-              icon={juego.tipo === 'victorias' ? 'cards' : juego.id === 'sudoku' ? 'chart' : 'gamepad'}
+              icon={juego.tipo === 'victorias' ? 'cards' : juego.id === 'sudoku' || juego.id === 'palabras' ? 'chart' : 'gamepad'}
               title="Nadie en el ranking todavía"
               description={`Sé el primero en aparecer. Jugá ${juego.nombre} para sumar puntos.`}
               action={{ label: `Jugar ${juego.nombre}`, to: juego.id === 'truco' ? '/juegos/truco-online' : `/juegos/${juego.id}` }}
@@ -161,6 +176,43 @@ export default function Ranking() {
                       <div>
                         <p className="text-purple-400 font-extrabold text-lg leading-none tabular-nums">{jugador.winrate}%</p>
                         <p className="text-gray-600 text-[10px] mt-0.5">winrate</p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+          ) : juego.tipo === 'racha' ? (
+
+            /* ── Adivina la Palabra ── */
+            <div className="flex flex-col gap-3">
+              {ranking.map((jugador, i) => {
+                const medalla = MEDALLA(i)
+                return (
+                  <div key={i} className={`flex items-center gap-4 bg-white/[0.03] border rounded-2xl px-5 py-4 transition-all ${
+                    i === 0 ? 'border-yellow-500/30 bg-yellow-500/[0.02]'
+                    : i === 1 ? 'border-gray-400/20'
+                    : i === 2 ? 'border-orange-500/20'
+                    : 'border-white/[0.06]'
+                  }`}>
+                    <div className="w-7 text-center flex-shrink-0">
+                      {medalla
+                        ? <span className="text-xl">{medalla}</span>
+                        : <span className="text-gray-600 text-sm font-bold tabular-nums">{i + 1}</span>
+                      }
+                    </div>
+                    <div className="w-9 h-9 rounded-full bg-purple-900/60 border border-purple-600/40 flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-extrabold text-xs">{jugador.nombre.slice(0, 2).toUpperCase()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-white text-sm truncate">{jugador.nombre}</p>
+                      <p className="text-gray-600 text-xs">Adivina la Palabra</p>
+                    </div>
+                    <div className="flex gap-5 text-center flex-shrink-0">
+                      <div>
+                        <p className="text-green-400 font-extrabold text-lg leading-none tabular-nums">{jugador.racha}</p>
+                        <p className="text-gray-600 text-[10px] mt-0.5">racha</p>
                       </div>
                     </div>
                   </div>
