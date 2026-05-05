@@ -12,6 +12,9 @@ import { db } from '../../firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { SOCKET_URL } from '../../config/socket'
 
+const normalizarCodigoTruco = (codigo = '') =>
+  codigo.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
+
 export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null }) {
   const sockRef        = useRef(null)
   const autoJoinedRef  = useRef(false)
@@ -122,10 +125,12 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
 
   useEffect(() => {
     if (!codigoAuto || !conectado || !miNombre || autoJoinedRef.current) return
+    const codigo = normalizarCodigoTruco(codigoAuto)
+    if (codigo.length !== 4) return
     autoJoinedRef.current = true
-    setInputCodigo(codigoAuto.toUpperCase())
+    setInputCodigo(codigo)
     setError('')
-    sockRef.current?.emit('unirse_sala', { salaId: codigoAuto.toUpperCase() })
+    sockRef.current?.emit('unirse_sala', { salaId: codigo })
   }, [conectado, codigoAuto, miNombre])
 
   useEffect(() => {
@@ -832,14 +837,14 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
                 </div>
                 <input
                   value={inputCodigo}
-                  onChange={e => setInputCodigo(e.target.value.toUpperCase())}
-                  onKeyDown={e => e.key === 'Enter' && inputCodigo.length === 4 && conectado && sockRef.current?.emit('unirse_sala', { salaId: inputCodigo })}
-                  placeholder="AB3X"
+                  onChange={e => setInputCodigo(normalizarCodigoTruco(e.target.value))}
+                  onKeyDown={e => e.key === 'Enter' && inputCodigo.length === 4 && conectado && sockRef.current?.emit('unirse_sala', { salaId: normalizarCodigoTruco(inputCodigo) })}
+                  placeholder="ABCD"
                   maxLength={4}
                   className="bg-white/[0.04] border border-white/[0.08] focus:border-purple-500/50 rounded-xl px-4 py-3 text-white text-center text-2xl font-mono tracking-[0.3em] focus:outline-none transition placeholder-gray-700"
                 />
                 <button
-                  onClick={() => { setError(''); sockRef.current?.emit('unirse_sala', { salaId: inputCodigo }) }}
+                  onClick={() => { setError(''); sockRef.current?.emit('unirse_sala', { salaId: normalizarCodigoTruco(inputCodigo) }) }}
                   disabled={inputCodigo.length < 4 || !conectado}
                   className="bg-white/[0.06] hover:bg-white/[0.10] disabled:opacity-30 disabled:cursor-not-allowed border border-white/[0.08] hover:border-purple-500/30 text-white py-3 rounded-xl font-bold transition text-sm"
                 >

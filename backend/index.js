@@ -30,29 +30,11 @@ app.post('/verify-recaptcha', async (req, res) => {
 })
 
 const server = http.createServer(app)
-const frontendOrigins = [
-  'http://localhost:5173',
-  'https://playroom-frontend.onrender.com',
-  ...(process.env.FRONTEND_ORIGINS || '').split(',').map(origin => origin.trim()).filter(Boolean),
-]
-
-function socketCorsOrigin(origin, callback) {
-  if (
-    !origin ||
-    frontendOrigins.includes(origin) ||
-    /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) ||
-    /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin)
-  ) {
-    callback(null, true)
-    return
-  }
-  callback(new Error('Origen no permitido por CORS'))
-}
 
 const io = new Server(server, {
   cors: {
-    origin: socketCorsOrigin,
-    methods: ['GET', 'POST']
+    origin: '*',
+    methods: ['GET', 'POST'],
   }
 })
 
@@ -194,7 +176,7 @@ function emitirEstado2v2(salaId, partida, logs) {
 }
 
 function generarCodigo() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
   let codigo = ''
   for (let i = 0; i < 4; i++) codigo += chars[Math.floor(Math.random() * chars.length)]
   return salas[codigo] ? generarCodigo() : codigo
@@ -231,16 +213,22 @@ io.on('connection', (socket) => {
     }
 
     const salaId = generarCodigo()
+    const hostInfo = {
+      id: socket.id,
+      nombre: socket.nombre || 'Jugador',
+      userId: socket.userId || socket.id,
+      photoURL: socket.photoURL || '',
+    }
     salas[salaId] = {
       id: salaId,
-      jugadores: [{ id: socket.id, nombre: socket.nombre, userId: socket.userId, photoURL: socket.photoURL }],
+      jugadores: [hostInfo],
       jugadorA: socket.id,
       limite,
       modalidad,
       estado: 'esperando',
-      equipoA: modalidad === '2vs2' ? [{ id: socket.id, nombre: socket.nombre, userId: socket.userId, photoURL: socket.photoURL }] : [],
+      equipoA: modalidad === '2vs2' ? [hostInfo] : [],
       equipoB: [],
-      creador: socket.userId,
+      creador: hostInfo.userId,
       createdAt: Date.now()
     }
 
@@ -263,20 +251,28 @@ io.on('connection', (socket) => {
   })
 
   socket.on('unirse_sala', ({ salaId }) => {
-    console.log(`🔍 ${socket.nombre} intenta unirse a sala ${salaId}`)
+    salaId = String(salaId || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
+    console.log(`🔍 ${socket.nombre || socket.id} intenta unirse a sala ${salaId}`)
     const sala = salas[salaId]
     console.log(`📋 modalidad: "${sala?.modalidad}" | estado: ${sala?.estado}`)
 
     if (!sala) { socket.emit('error_sala', '❌ Sala no encontrada'); return }
     if (sala.estado !== 'esperando') { socket.emit('error_sala', '❌ La partida ya comenzó'); return }
 
-    const jugadorExistente = sala.jugadores.find(j => j.userId === socket.userId)
+    // Solo bloquear si ambos tienen userId definido y son iguales (misma cuenta)
+    const userId = socket.userId || socket.id
+    const jugadorExistente = userId && sala.jugadores.find(j => j.userId && j.userId === userId)
     if (jugadorExistente) { socket.emit('error_sala', '❌ No podés unirte a tu propia sala'); return }
 
     socket.join(salaId)
     socket.salaId = salaId
 
-    const jugador = { id: socket.id, nombre: socket.nombre, userId: socket.userId, photoURL: socket.photoURL }
+    const jugador = {
+      id: socket.id,
+      nombre: socket.nombre || 'Jugador',
+      userId: socket.userId || socket.id,
+      photoURL: socket.photoURL || '',
+    }
 
     if (sala.modalidad === '1vs1') {
       if (sala.jugadores.length >= 2) { socket.emit('error_sala', '❌ La sala está llena'); return }
