@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useNavigationGuard } from '../../context/NavigationGuardContext'
 import MesaTruco from './MesaTruco'
 import MesaTruco2v2 from './MesaTruco2v2'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { db } from '../../firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { SOCKET_URL } from '../../config/socket'
@@ -109,6 +109,7 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
   const partner2v2Ref      = useRef(null)
   const rivals2v2Ref       = useRef([])
   const navigate           = useNavigate()
+  const location           = useLocation()
   const { setGuard, clearGuard } = useNavigationGuard()
 
   manoJRef.current      = manoJ
@@ -120,8 +121,8 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
   const puedeSubirFaltaEnvido = envidoPendiente
 
   useEffect(() => {
-    if (!usuario) navigate('/login', { state: { desde: '/juegos/truco-online' } })
-  }, [usuario])
+    if (!usuario) navigate('/login', { state: { desde: `${location.pathname}${location.search}` } })
+  }, [usuario, navigate, location.pathname, location.search])
 
   useEffect(() => {
     if (!codigoAuto || !conectado || !miNombre || autoJoinedRef.current) return

@@ -256,7 +256,7 @@ io.on('connection', (socket) => {
     const sala = salas[salaId]
     console.log(`📋 modalidad: "${sala?.modalidad}" | estado: ${sala?.estado}`)
 
-    if (!sala) { socket.emit('error_sala', '❌ Sala no encontrada'); return }
+    if (!sala) { socket.emit('error_sala', `❌ Sala ${salaId || '----'} no encontrada. Revisá el código o pedí uno nuevo.`); return }
     if (sala.estado !== 'esperando') { socket.emit('error_sala', '❌ La partida ya comenzó'); return }
 
     // Solo bloquear si ambos tienen userId definido y son iguales (misma cuenta)
