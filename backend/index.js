@@ -7,6 +7,7 @@ const {
   crearPartida2v2, repartirNuevaRonda2v2, procesarFlorInicial2v2, procesarAccion2v2, getEstadoParaSocket2v2,
 } = require('./trucoLogica')
 const { crearPartidaPoker, dealNuevaRonda, procesarAccionPoker, getEstadoParaJugador, cpuDecide } = require('./pokerLogica')
+const { crearPartidaUno, jugarCarta, robarCarta, cantarUno, getEstadoUno } = require('./unoLogica')
 
 const app = express()
 app.use(cors())
@@ -29,9 +30,28 @@ app.post('/verify-recaptcha', async (req, res) => {
 })
 
 const server = http.createServer(app)
+const frontendOrigins = [
+  'http://localhost:5173',
+  'https://playroom-frontend.onrender.com',
+  ...(process.env.FRONTEND_ORIGINS || '').split(',').map(origin => origin.trim()).filter(Boolean),
+]
+
+function socketCorsOrigin(origin, callback) {
+  if (
+    !origin ||
+    frontendOrigins.includes(origin) ||
+    /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin) ||
+    /^http:\/\/192\.168\.\d+\.\d+:\d+$/.test(origin)
+  ) {
+    callback(null, true)
+    return
+  }
+  callback(new Error('Origen no permitido por CORS'))
+}
+
 const io = new Server(server, {
   cors: {
-    origin: ['http://localhost:5173', 'https://playroom-frontend.onrender.com'],
+    origin: socketCorsOrigin,
     methods: ['GET', 'POST']
   }
 })
@@ -43,10 +63,86 @@ const trucoGames = {}
 // ── Poker ─────────────────────────────────────────────────────────────────────
 const pokerSalas = {}
 const pokerGames = {}
+const pictionarySalas = {}
+const unoSalas = {}
+const unoGames = {}
+
+const PICTIONARY_WORDS = [
+  'perro','gato','casa','arbol','auto','barco','avion','pizza','pelota','guitarra',
+  'reloj','zapato','telefono','computadora','sol','luna','estrella','montana','playa','flor',
+  'bicicleta','libro','silla','mesa','corazon','helado','sombrero','camara','llave','puente',
+  'tren','robot','castillo','fantasma','dragon','paraguas','escalera','manzana','tortuga','cohete'
+]
 
 function generarCodigoPoker() {
   const code = String(Math.floor(Math.random() * 9000) + 1000)
   return pokerSalas[code] ? generarCodigoPoker() : code
+}
+
+function generarCodigoPictionary() {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const nums = '23456789'
+  const code =
+    letters[Math.floor(Math.random() * letters.length)] +
+    letters[Math.floor(Math.random() * letters.length)] +
+    nums[Math.floor(Math.random() * nums.length)] +
+    nums[Math.floor(Math.random() * nums.length)]
+  return pictionarySalas[code] ? generarCodigoPictionary() : code
+}
+
+function generarCodigoUno() {
+  const letters = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+  const nums = '23456789'
+  const code =
+    letters[Math.floor(Math.random() * letters.length)] +
+    nums[Math.floor(Math.random() * nums.length)] +
+    letters[Math.floor(Math.random() * letters.length)] +
+    nums[Math.floor(Math.random() * nums.length)]
+  return unoSalas[code] ? generarCodigoUno() : code
+}
+
+function emitirEstadoUno(salaId) {
+  const game = unoGames[salaId]
+  const sala = unoSalas[salaId]
+  if (!game || !sala) return
+  for (const jugador of sala.jugadores) {
+    io.to(jugador.id).emit('uno_estado', getEstadoUno(game, jugador.id))
+  }
+}
+
+function normalizarTexto(texto = '') {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()
+}
+
+function emitirPictionary(salaId) {
+  const sala = pictionarySalas[salaId]
+  if (!sala) return
+  for (const jugador of sala.jugadores) {
+    const esDibujante = jugador.id === sala.drawerId
+    io.to(jugador.id).emit('pictionary_estado', {
+      id: sala.id,
+      jugadores: sala.jugadores,
+      host: sala.host,
+      estado: sala.estado,
+      maxJugadores: sala.maxJugadores,
+      ronda: sala.ronda,
+      drawerId: sala.drawerId,
+      palabra: esDibujante ? sala.palabra : null,
+      pista: sala.palabra ? sala.palabra.replace(/[a-záéíóúñ]/gi, '_') : '',
+      acertaron: [...sala.acertaron],
+      puntajes: sala.puntajes,
+      chat: sala.chat.slice(-40),
+    })
+  }
+}
+
+function nuevaRondaPictionary(sala) {
+  sala.ronda += 1
+  sala.drawerIdx = (sala.drawerIdx + 1) % sala.jugadores.length
+  sala.drawerId = sala.jugadores[sala.drawerIdx].id
+  sala.palabra = PICTIONARY_WORDS[Math.floor(Math.random() * PICTIONARY_WORDS.length)]
+  sala.acertaron = new Set()
+  sala.chat = [{ tipo: 'sistema', texto: `${sala.jugadores[sala.drawerIdx].nombre} dibuja ahora.` }]
 }
 
 function emitirEstadoPoker(salaId) {
@@ -343,6 +439,213 @@ io.on('connection', (socket) => {
 
   socket.on('ping', () => socket.emit('pong'))
 
+  // ── UNO events ────────────────────────────────────────────────────────────
+
+  socket.on('uno_crear_sala', ({ maxJugadores = 6 } = {}) => {
+    if (socket.unoSalaId && unoSalas[socket.unoSalaId]) {
+      socket.emit('uno_error', 'Ya estás en una sala de UNO.')
+      return
+    }
+    const salaId = generarCodigoUno()
+    unoSalas[salaId] = {
+      id: salaId,
+      jugadores: [{ id: socket.id, nombre: socket.nombre || 'Jugador' }],
+      host: socket.id,
+      estado: 'esperando',
+      maxJugadores: Math.max(2, Math.min(6, maxJugadores)),
+      createdAt: Date.now(),
+    }
+    socket.join(`uno:${salaId}`)
+    socket.unoSalaId = salaId
+    socket.emit('uno_sala_creada', { salaId })
+    io.to(`uno:${salaId}`).emit('uno_prelobby', unoSalas[salaId])
+  })
+
+  socket.on('uno_unirse_sala', ({ salaId }) => {
+    const sala = unoSalas[salaId]
+    if (!sala) { socket.emit('uno_error', 'Sala no encontrada'); return }
+    if (sala.estado !== 'esperando') { socket.emit('uno_error', 'La partida ya comenzó'); return }
+    if (sala.jugadores.length >= sala.maxJugadores) { socket.emit('uno_error', 'La sala está llena'); return }
+    if (sala.jugadores.find(j => j.id === socket.id)) { socket.emit('uno_error', 'Ya estás en esta sala'); return }
+    sala.jugadores.push({ id: socket.id, nombre: socket.nombre || 'Jugador' })
+    socket.join(`uno:${salaId}`)
+    socket.unoSalaId = salaId
+    io.to(`uno:${salaId}`).emit('uno_prelobby', sala)
+  })
+
+  socket.on('uno_config_sala', ({ maxJugadores }) => {
+    const sala = unoSalas[socket.unoSalaId]
+    if (!sala || sala.host !== socket.id || sala.estado !== 'esperando') return
+    sala.maxJugadores = Math.max(2, sala.jugadores.length, Math.min(6, maxJugadores))
+    io.to(`uno:${socket.unoSalaId}`).emit('uno_prelobby', sala)
+  })
+
+  socket.on('uno_iniciar', () => {
+    const sala = unoSalas[socket.unoSalaId]
+    if (!sala || sala.host !== socket.id) return
+    if (sala.jugadores.length < 2) { socket.emit('uno_error', 'Necesitás al menos 2 jugadores'); return }
+    sala.estado = 'jugando'
+    unoGames[sala.id] = crearPartidaUno(sala.jugadores)
+    io.to(`uno:${sala.id}`).emit('uno_iniciado')
+    emitirEstadoUno(sala.id)
+  })
+
+  socket.on('uno_jugar', ({ cardId, color }) => {
+    const game = unoGames[socket.unoSalaId]
+    if (!game) return
+    const result = jugarCarta(game, socket.id, cardId, color)
+    if (!result.ok) { socket.emit('uno_error', result.error); return }
+    emitirEstadoUno(socket.unoSalaId)
+  })
+
+  socket.on('uno_robar', () => {
+    const game = unoGames[socket.unoSalaId]
+    if (!game) return
+    const result = robarCarta(game, socket.id)
+    if (!result.ok) { socket.emit('uno_error', result.error); return }
+    emitirEstadoUno(socket.unoSalaId)
+  })
+
+  socket.on('uno_cantar', () => {
+    const game = unoGames[socket.unoSalaId]
+    if (!game) return
+    const result = cantarUno(game, socket.id)
+    if (!result.ok) { socket.emit('uno_error', result.error); return }
+    emitirEstadoUno(socket.unoSalaId)
+  })
+
+  socket.on('uno_salir_sala', () => {
+    const salaId = socket.unoSalaId
+    const sala = unoSalas[salaId]
+    if (!sala) return
+    socket.leave(`uno:${salaId}`)
+    socket.unoSalaId = null
+    if (sala.host === socket.id || sala.estado === 'jugando') {
+      socket.to(`uno:${salaId}`).emit('uno_error', 'La sala se cerró.')
+      delete unoSalas[salaId]
+      delete unoGames[salaId]
+      return
+    }
+    sala.jugadores = sala.jugadores.filter(j => j.id !== socket.id)
+    io.to(`uno:${salaId}`).emit('uno_prelobby', sala)
+  })
+
+  // ── Pictionary events ─────────────────────────────────────────────────────
+
+  socket.on('pictionary_crear_sala', ({ maxJugadores = 8 } = {}) => {
+    if (socket.pictionarySalaId && pictionarySalas[socket.pictionarySalaId]) {
+      socket.emit('pictionary_error', 'Ya estás en una sala de Pictionary.')
+      return
+    }
+    const salaId = generarCodigoPictionary()
+    pictionarySalas[salaId] = {
+      id: salaId,
+      jugadores: [{ id: socket.id, nombre: socket.nombre || 'Jugador' }],
+      host: socket.id,
+      estado: 'esperando',
+      maxJugadores: Math.max(3, Math.min(8, maxJugadores)),
+      ronda: 0,
+      drawerIdx: -1,
+      drawerId: null,
+      palabra: '',
+      acertaron: new Set(),
+      puntajes: { [socket.id]: 0 },
+      chat: [],
+      createdAt: Date.now(),
+    }
+    socket.join(`pictionary:${salaId}`)
+    socket.pictionarySalaId = salaId
+    socket.emit('pictionary_sala_creada', { salaId })
+    emitirPictionary(salaId)
+  })
+
+  socket.on('pictionary_unirse_sala', ({ salaId }) => {
+    const sala = pictionarySalas[salaId]
+    if (!sala) { socket.emit('pictionary_error', 'Sala no encontrada'); return }
+    if (sala.estado !== 'esperando') { socket.emit('pictionary_error', 'La partida ya comenzó'); return }
+    if (sala.jugadores.length >= sala.maxJugadores) { socket.emit('pictionary_error', 'La sala está llena'); return }
+    if (sala.jugadores.find(j => j.id === socket.id)) { socket.emit('pictionary_error', 'Ya estás en esta sala'); return }
+
+    sala.jugadores.push({ id: socket.id, nombre: socket.nombre || 'Jugador' })
+    sala.puntajes[socket.id] = 0
+    socket.join(`pictionary:${salaId}`)
+    socket.pictionarySalaId = salaId
+    emitirPictionary(salaId)
+  })
+
+  socket.on('pictionary_config_sala', ({ maxJugadores }) => {
+    const sala = pictionarySalas[socket.pictionarySalaId]
+    if (!sala || sala.host !== socket.id || sala.estado !== 'esperando') return
+    sala.maxJugadores = Math.max(3, sala.jugadores.length, Math.min(8, maxJugadores))
+    emitirPictionary(socket.pictionarySalaId)
+  })
+
+  socket.on('pictionary_iniciar', () => {
+    const sala = pictionarySalas[socket.pictionarySalaId]
+    if (!sala || sala.host !== socket.id) return
+    if (sala.jugadores.length < 3) { socket.emit('pictionary_error', 'Necesitás al menos 3 jugadores'); return }
+    sala.estado = 'jugando'
+    nuevaRondaPictionary(sala)
+    emitirPictionary(sala.id)
+    io.to(`pictionary:${sala.id}`).emit('pictionary_limpiar')
+  })
+
+  socket.on('pictionary_siguiente_ronda', () => {
+    const sala = pictionarySalas[socket.pictionarySalaId]
+    if (!sala || sala.host !== socket.id || sala.estado !== 'jugando') return
+    nuevaRondaPictionary(sala)
+    emitirPictionary(sala.id)
+    io.to(`pictionary:${sala.id}`).emit('pictionary_limpiar')
+  })
+
+  socket.on('pictionary_dibujo', (stroke) => {
+    const sala = pictionarySalas[socket.pictionarySalaId]
+    if (!sala || sala.drawerId !== socket.id || sala.estado !== 'jugando') return
+    socket.to(`pictionary:${sala.id}`).emit('pictionary_dibujo', stroke)
+  })
+
+  socket.on('pictionary_limpiar', () => {
+    const sala = pictionarySalas[socket.pictionarySalaId]
+    if (!sala || sala.drawerId !== socket.id) return
+    io.to(`pictionary:${sala.id}`).emit('pictionary_limpiar')
+  })
+
+  socket.on('pictionary_mensaje', ({ texto }) => {
+    const sala = pictionarySalas[socket.pictionarySalaId]
+    if (!sala || sala.estado !== 'jugando') return
+    const msg = String(texto || '').trim().slice(0, 60)
+    if (!msg) return
+    if (socket.id === sala.drawerId) return
+
+    const jugador = sala.jugadores.find(j => j.id === socket.id)
+    const acerto = normalizarTexto(msg) === normalizarTexto(sala.palabra)
+    if (acerto && !sala.acertaron.has(socket.id)) {
+      sala.acertaron.add(socket.id)
+      sala.puntajes[socket.id] = (sala.puntajes[socket.id] || 0) + 10
+      sala.puntajes[sala.drawerId] = (sala.puntajes[sala.drawerId] || 0) + 5
+      sala.chat.push({ tipo: 'acierto', nombre: jugador?.nombre || 'Jugador', texto: 'adivinó la palabra' })
+    } else if (!sala.acertaron.has(socket.id)) {
+      sala.chat.push({ tipo: 'mensaje', nombre: jugador?.nombre || 'Jugador', texto: msg })
+    }
+    emitirPictionary(sala.id)
+  })
+
+  socket.on('pictionary_salir_sala', () => {
+    const salaId = socket.pictionarySalaId
+    const sala = pictionarySalas[salaId]
+    if (!sala) return
+    socket.leave(`pictionary:${salaId}`)
+    socket.pictionarySalaId = null
+    if (sala.host === socket.id || sala.estado === 'jugando') {
+      socket.to(`pictionary:${salaId}`).emit('pictionary_error', 'La sala se cerró.')
+      delete pictionarySalas[salaId]
+      return
+    }
+    sala.jugadores = sala.jugadores.filter(j => j.id !== socket.id)
+    delete sala.puntajes[socket.id]
+    emitirPictionary(salaId)
+  })
+
   // ── Poker events ──────────────────────────────────────────────────────────
 
   socket.on('poker_crear_sala', ({ maxJugadores = 6 } = {}) => {
@@ -468,6 +771,30 @@ io.on('connection', (socket) => {
 
     if (socket.userId) usuariosConectados.delete(socket.userId)
     limpiarPokerPorSalida()
+    if (socket.unoSalaId && unoSalas[socket.unoSalaId]) {
+      const salaIdUno = socket.unoSalaId
+      const salaUno = unoSalas[salaIdUno]
+      if (salaUno.host === socket.id || salaUno.estado === 'jugando') {
+        socket.to(`uno:${salaIdUno}`).emit('uno_error', 'La sala se cerró.')
+        delete unoSalas[salaIdUno]
+        delete unoGames[salaIdUno]
+      } else {
+        salaUno.jugadores = salaUno.jugadores.filter(j => j.id !== socket.id)
+        io.to(`uno:${salaIdUno}`).emit('uno_prelobby', salaUno)
+      }
+    }
+    if (socket.pictionarySalaId && pictionarySalas[socket.pictionarySalaId]) {
+      const salaIdPic = socket.pictionarySalaId
+      const salaPic = pictionarySalas[salaIdPic]
+      if (salaPic.host === socket.id || salaPic.estado === 'jugando') {
+        socket.to(`pictionary:${salaIdPic}`).emit('pictionary_error', 'La sala se cerró.')
+        delete pictionarySalas[salaIdPic]
+      } else {
+        salaPic.jugadores = salaPic.jugadores.filter(j => j.id !== socket.id)
+        delete salaPic.puntajes[socket.id]
+        emitirPictionary(salaIdPic)
+      }
+    }
 
     const salaId = socket.salaId
     if (salaId && salas[salaId]) {

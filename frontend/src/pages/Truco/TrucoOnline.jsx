@@ -10,8 +10,7 @@ import MesaTruco2v2 from './MesaTruco2v2'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../../firebase'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
-
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001'
+import { SOCKET_URL } from '../../config/socket'
 
 export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null }) {
   const sockRef        = useRef(null)
@@ -21,6 +20,7 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
   const [codigoSala, setCodigoSala]   = useState('')
   const [inputCodigo, setInputCodigo] = useState('')
   const [error, setError]             = useState('')
+  const [errorConexion, setErrorConexion] = useState('')
   const [limite, setLimite]           = useState(30)
   const [conectado, setConectado]     = useState(false)
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false)
@@ -271,8 +271,15 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
     const socket = io(SOCKET_URL, { forceNew: true })
     sockRef.current = socket
 
-    socket.on('connect',    () => setConectado(true))
+    socket.on('connect', () => {
+      setConectado(true)
+      setErrorConexion('')
+    })
     socket.on('disconnect', () => setConectado(false))
+    socket.on('connect_error', () => {
+      setConectado(false)
+      setErrorConexion('No se pudo conectar al servidor online. Revisá que el backend de Render esté activo.')
+    })
 
     socket.on('sala_creada', ({ salaId }) => {
       setCodigoSala(salaId)
@@ -712,6 +719,11 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
           {error && (
             <div className="bg-red-950/60 border border-red-700/40 text-red-400 text-sm px-4 py-3 rounded-2xl text-center">
               {error}
+            </div>
+          )}
+          {errorConexion && (
+            <div className="bg-amber-950/60 border border-amber-700/40 text-amber-200 text-sm px-4 py-3 rounded-2xl text-center">
+              {errorConexion}
             </div>
           )}
 

@@ -17,6 +17,8 @@ import NotFound from './pages/NotFound.jsx'
 import Solitario from './pages/Solitario.jsx'
 import Poker from './pages/Poker.jsx'
 import AdivinaPalabra from './pages/AdivinaPalabra.jsx'
+import Pictionary from './pages/Pictionary.jsx'
+import Uno from './pages/Uno.jsx'
 
 function TrucoOnlineJoin() {
   const { codigo } = useParams()
@@ -44,6 +46,8 @@ function App() {
       <Route path="/juegos/solitario"         element={<Solitario />} />
       <Route path="/juegos/poker"            element={<Poker />} />
       <Route path="/juegos/palabras"          element={<AdivinaPalabra />} />
+      <Route path="/juegos/pictionary"        element={<Pictionary />} />
+      <Route path="/juegos/uno"               element={<Uno />} />
       <Route path="/unirse/:codigo"           element={<TrucoOnlineJoin />} />
       <Route path="*"                         element={<NotFound />} />
     </Routes>

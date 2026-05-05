@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 /*
   Formato de código por juego:
   - Truco Online : 4 letras mayúsculas  (ej: ABCD)
+  - Pictionary   : 2 letras + 2 números (ej: AB12)
+  - Uno          : letra+número+letra+número (ej: A1B2)
   - Poker        : 4 dígitos numéricos  (ej: 1234)
 */
 const JUEGOS = [
@@ -19,6 +21,17 @@ const JUEGOS = [
     transform: (v) => v.toUpperCase().replace(/[^A-Z]/g, ''),
   },
   {
+    nombre: 'Pictionary',
+    icono: 'PI',
+    categoria: 'Social · 3–8 jugadores',
+    pattern: /^[A-Z]{2}[0-9]{2}$/,
+    hint: '2 letras + 2 números — ej: AB12',
+    ruta: (codigo) => `/juegos/pictionary?sala=${codigo}`,
+    maxLen: 4,
+    charType: 'mixed',
+    transform: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+  },
+  {
     nombre: 'Poker',
     icono: 'PK',
     categoria: 'Cartas · 2–4 jugadores',
@@ -29,6 +42,17 @@ const JUEGOS = [
     charType: 'digit',
     transform: (v) => v.replace(/[^0-9]/g, ''),
   },
+  {
+    nombre: 'Uno',
+    icono: 'UN',
+    categoria: 'Cartas · 2–6 jugadores',
+    pattern: /^[A-Z][0-9][A-Z][0-9]$/,
+    hint: 'letra+número+letra+número — ej: A1B2',
+    ruta: (codigo) => `/juegos/uno?sala=${codigo}`,
+    maxLen: 4,
+    charType: 'uno',
+    transform: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+  },
 ]
 
 function detectarJuego(codigo) {
@@ -37,7 +61,7 @@ function detectarJuego(codigo) {
 
 export default function UnirseConCodigoModal({ onClose }) {
   const [codigo, setCodigo]         = useState('')
-  const [juego, setJuego]           = useState(null)
+  const [juego, setJuego]           = useState(JUEGOS[0])
   const [shake, setShake]           = useState(false)
   const inputRef                    = useRef(null)
   const navigate                    = useNavigate()
@@ -51,19 +75,24 @@ export default function UnirseConCodigoModal({ onClose }) {
 
   const handleChange = (e) => {
     const raw = e.target.value
-    // Detect game type by character: letters → Truco, digits → Poker
-    const firstChar = raw.replace(/\s/g, '')[0] ?? ''
+    // Detect game type by format.
+    const compact = raw.replace(/\s/g, '')
+    const firstChar = compact[0] ?? ''
+    const normalizedMixed = compact.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
     const candidato = firstChar
-      ? JUEGOS.find(j => j.charType === 'digit' ? /[0-9]/.test(firstChar) : /[A-Za-z]/.test(firstChar))
+      ? (/[0-9]/.test(firstChar) ? JUEGOS.find(j => j.charType === 'digit')
+        : /^[A-Z]{2}[0-9]{1,2}$/.test(normalizedMixed) || juego?.charType === 'mixed' ? JUEGOS.find(j => j.charType === 'mixed')
+        : /^[A-Z][0-9]/.test(normalizedMixed) || juego?.charType === 'uno' ? JUEGOS.find(j => j.charType === 'uno')
+        : JUEGOS[0])
         ?? JUEGOS[0]
       : JUEGOS[0]
     const transformado = candidato.transform(raw).slice(0, candidato.maxLen)
     setCodigo(transformado)
-    setJuego(detectarJuego(transformado))
+    setJuego(candidato.charType === 'letter' ? candidato : detectarJuego(transformado) || candidato)
   }
 
   const handleUnirse = () => {
-    if (!juego) {
+    if (!juego || !juego.pattern.test(codigo)) {
       setShake(true)
       setTimeout(() => setShake(false), 500)
       return
@@ -78,7 +107,7 @@ export default function UnirseConCodigoModal({ onClose }) {
 
   const estadoCodigo =
     codigo.length === 0   ? 'empty'
-    : juego               ? 'valid'
+    : juego?.pattern.test(codigo) ? 'valid'
     :                       'invalid'
 
   return (

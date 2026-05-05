@@ -4,32 +4,7 @@ import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { db } from '../firebase'
 import { useAuth } from '../context/AuthContext'
-
-const WORDS = [
-  'ARBOL','ARENA','BARCO','BESOS','BOLSA','BRAZO','CALLE','CAMPO','CANTO','CARGA',
-  'CARTA','CASAS','CERRO','CLAVE','COLOR','COPAS','CORTE','COSTA','DATOS','DEDOS',
-  'DULCE','FALTA','FUEGO','GOLPE','GRITO','HIELO','JUEGO','LADOS','LIBRO','LLAVE',
-  'LUCES','MADRE','MARCA','MENTE','MESAS','MONTE','NIEVE','NOCHE','NORTE','NUBES',
-  'OBRAS','ONDAS','PARED','PARTE','PASOS','PERRO','PIANO','PISTA','PLAYA','PLAZA',
-  'PODER','PUNTO','QUESO','RAMAS','REGLA','RELOJ','RITMO','RUTAS','SALTO','SILLA',
-  'SOBRE','SUELO','TARDE','TECHO','TEXTO','TIEMPO','TORRE','TRATO','TRENZ','VALOR',
-  'VASOS','VERDE','VIAJE','VIENTO','VISTA','VOCAL','ZONAS',
-].filter(w => w.length === 5)
-
-const VALID_WORDS = new Set([
-  ...WORDS,
-  'ABRIR','ACTOR','AGUAS','ALTAR','AMIGO','ANTES','BAILE','BAJAR','BANCO','BANDA',
-  'BICHO','BOTON','BUENO','CAJAS','CALOR','CENAR','CERCA','CIELO','CINCO','CLARO',
-  'COCHE','COMER','CREAR','CURSO','DECIR','DICHO','DOLOR','DORMI','DUCHA','DUELO',
-  'ERROR','ESTAR','FELIZ','FINAL','FIRME','FORMA','GANAR','GENTE','GRADO','GRANO',
-  'HABLA','HACER','HOGAR','HONOR','IDEAL','IGUAL','JOVEN','JUGAR','LARGO','LETRA',
-  'LISTA','LOCAL','LUGAR','MAYOR','MEJOR','MENOS','METAL','MIRAR','MOTOR','MUJER',
-  'NACER','NADAR','NARIZ','NEGRO','NINOS','NIVEL','NUEVO','PAPEL','PATIO','PEDIR',
-  'PESAR','PIEZA','PONER','QUEDA','QUISO','RADIO','RAZON','REDES','REINA','RESTO',
-  'ROMPE','SABER','SALIR','SANTO','SERIE','SOLAR','SONAR','SUBIR','TENER','TOMAR',
-  'TOTAL','TRAER','UNICO','USADO','VACIO','VENIR','VIVIR',
-])
-const WORD_VALIDATION_CACHE = new Map()
+import { SOLUCIONES, VALIDAS_EXTRA } from '../data/palabras_es'
 
 const ROWS = 6
 const COLS = 5
@@ -38,6 +13,10 @@ const KEYS = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM']
 function normalize(value) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/Ñ/g, 'N').replace(/[^A-Z]/g, '').slice(0, COLS)
 }
+
+const WORDS = SOLUCIONES.filter(w => normalize(w).length === COLS).map(normalize)
+const VALID_WORDS = new Set([...WORDS, ...VALIDAS_EXTRA.map(normalize)])
+const WORD_VALIDATION_CACHE = new Map()
 
 function todayKey(date = new Date()) {
   const y = date.getFullYear()

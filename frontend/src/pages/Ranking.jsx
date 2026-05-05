@@ -29,6 +29,25 @@ function formatTiempo(s) {
 
 const MEDALLA = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
 
+function RankingAvatar({ jugador }) {
+  const iniciales = (jugador.nombre || 'Jugador').slice(0, 2).toUpperCase()
+  return (
+    <div className="w-9 h-9 rounded-full bg-purple-900/60 border border-purple-600/40 flex items-center justify-center flex-shrink-0 overflow-hidden">
+      {jugador.photoURL ? (
+        <img
+          src={jugador.photoURL}
+          alt=""
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+          onError={(e) => { e.currentTarget.style.display = 'none' }}
+        />
+      ) : (
+        <span className="text-white font-extrabold text-xs">{iniciales}</span>
+      )}
+    </div>
+  )
+}
+
 export default function Ranking() {
   const [juegoActivo, setJuegoActivo] = useState('truco')
   const [ranking, setRanking]         = useState([])
@@ -40,13 +59,29 @@ export default function Ranking() {
     const cargar = async () => {
       setCargando(true)
       try {
-        const snap = await getDocs(collection(db, juego.coleccion))
+        const [snap, usersSnap] = await Promise.all([
+          getDocs(collection(db, juego.coleccion)),
+          getDocs(collection(db, 'users')).catch(() => null),
+        ])
+        const perfiles = {}
+        usersSnap?.forEach(doc => {
+          const d = doc.data()
+          perfiles[doc.id] = {
+            nombre: d.displayName || d.nombre || '',
+            photoURL: d.photoURL || '',
+          }
+        })
+        const aplicarPerfil = (uid, base) => ({
+          ...base,
+          nombre: perfiles[uid]?.nombre || base.nombre || 'Jugador',
+          photoURL: perfiles[uid]?.photoURL || base.photoURL || '',
+        })
 
         if (juego.tipo === 'victorias') {
           const porUsuario = {}
           snap.forEach(doc => {
             const d = doc.data()
-            if (!porUsuario[d.uid]) porUsuario[d.uid] = { nombre: d.nombre, victorias: 0, derrotas: 0 }
+            if (!porUsuario[d.uid]) porUsuario[d.uid] = aplicarPerfil(d.uid, { uid: d.uid, nombre: d.nombre, victorias: 0, derrotas: 0 })
             if (d.resultado === 'victoria') porUsuario[d.uid].victorias++
             else porUsuario[d.uid].derrotas++
           })
@@ -59,13 +94,14 @@ export default function Ranking() {
           const lista = []
           snap.forEach(doc => {
             const d = doc.data()
-            lista.push({
+            lista.push(aplicarPerfil(d.uid || doc.id, {
+              uid: d.uid || doc.id,
               nombre: d.nombre || 'Jugador',
               racha: d.racha || 0,
               mejorRacha: d.mejorRacha || d.racha || 0,
               totalAciertos: d.totalAciertos || 0,
               lastSolvedDate: d.lastSolvedDate,
-            })
+            }))
           })
           lista.sort((a, b) => b.racha - a.racha || b.mejorRacha - a.mejorRacha || b.totalAciertos - a.totalAciertos)
           setRanking(lista.slice(0, 10))
@@ -74,7 +110,7 @@ export default function Ranking() {
           snap.forEach(doc => {
             const d = doc.data()
             if (!porUsuario[d.uid] || (d.puntuacion || 0) > (porUsuario[d.uid].puntuacion || 0)) {
-              porUsuario[d.uid] = { nombre: d.nombre, puntuacion: d.puntuacion || 0, dificultad: d.dificultad, tiempo: d.tiempo, errores: d.errores }
+              porUsuario[d.uid] = aplicarPerfil(d.uid, { uid: d.uid, nombre: d.nombre, puntuacion: d.puntuacion || 0, dificultad: d.dificultad, tiempo: d.tiempo, errores: d.errores })
             }
           })
           const lista = Object.values(porUsuario)
@@ -157,9 +193,7 @@ export default function Ranking() {
                         : <span className="text-gray-600 text-sm font-bold tabular-nums">{i + 1}</span>
                       }
                     </div>
-                    <div className="w-9 h-9 rounded-full bg-purple-900/60 border border-purple-600/40 flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-extrabold text-xs">{jugador.nombre.slice(0, 2).toUpperCase()}</span>
-                    </div>
+                    <RankingAvatar jugador={jugador} />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-white text-sm truncate">{jugador.nombre}</p>
                       <p className="text-gray-600 text-xs">{jugador.partidas} partidas</p>
@@ -202,9 +236,7 @@ export default function Ranking() {
                         : <span className="text-gray-600 text-sm font-bold tabular-nums">{i + 1}</span>
                       }
                     </div>
-                    <div className="w-9 h-9 rounded-full bg-purple-900/60 border border-purple-600/40 flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-extrabold text-xs">{jugador.nombre.slice(0, 2).toUpperCase()}</span>
-                    </div>
+                    <RankingAvatar jugador={jugador} />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-white text-sm truncate">{jugador.nombre}</p>
                       <p className="text-gray-600 text-xs">Adivina la Palabra</p>
@@ -239,9 +271,7 @@ export default function Ranking() {
                         : <span className="text-gray-600 text-sm font-bold tabular-nums">{i + 1}</span>
                       }
                     </div>
-                    <div className="w-9 h-9 rounded-full bg-purple-900/60 border border-purple-600/40 flex items-center justify-center flex-shrink-0">
-                      <span className="text-white font-extrabold text-xs">{jugador.nombre.slice(0, 2).toUpperCase()}</span>
-                    </div>
+                    <RankingAvatar jugador={jugador} />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-white text-sm truncate">{jugador.nombre}</p>
                       <span className={`text-xs font-semibold ${DIFF_COLOR[jugador.dificultad] || 'text-gray-400'}`}>

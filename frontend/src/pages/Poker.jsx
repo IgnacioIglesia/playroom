@@ -4,12 +4,12 @@ import { io } from 'socket.io-client'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
+import { SOCKET_URL } from '../config/socket'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const VNAMES = ['2','3','4','5','6','7','8','9','10','J','Q','K','A']
 const isRed  = s => s === 1 || s === 2
 const SB = 10, BB = 20, START = 1000
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001'
 
 // ── Deck ──────────────────────────────────────────────────────────────────────
 const mkDeck = () => Array.from({ length: 52 }, (_, i) => ({ suit: Math.floor(i / 13), value: (i % 13) + 2, id: i }))
