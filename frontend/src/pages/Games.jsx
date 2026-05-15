@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import CatalogoJuegos from '../components/CatalogoJuegos'
 import Footer from '../components/Footer'
 import UnirseConCodigoModal from '../components/UnirseConCodigoModal'
 
 function Games() {
+  usePageTitle('Juegos')
   const [modalAbierto, setModalAbierto] = useState(false)
 
   return (

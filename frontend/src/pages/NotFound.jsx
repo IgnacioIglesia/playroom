@@ -1,8 +1,10 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 
 export default function NotFound() {
+  usePageTitle('404')
   const navigate  = useNavigate()
   const location  = useLocation()
 

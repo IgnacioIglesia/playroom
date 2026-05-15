@@ -476,7 +476,9 @@ function procesarAccion(p, socketId, tipo, datos) {
     case 'contraFlor': {
       if (!p.florActiva) return { ok: false, error: 'No hay flor activa' }
       if (p.florResuelta) return { ok: false, error: 'La flor ya fue resuelta' }
-      if (p.florPendientePara != null) return { ok: false, error: 'Hay una flor pendiente de respuesta' }
+      const pendingParaMiFlor = p.florPendientePara === yo
+      if (p.florPendientePara != null && !pendingParaMiFlor) return { ok: false, error: 'Hay una flor pendiente de respuesta' }
+      if (pendingParaMiFlor && tipo === 'flor') return { ok: false, error: 'Ya hay flor cantada — subí o respondé' }
       if (tipo === 'contraFlor' && p.florCantadaPor == null) return { ok: false, error: 'Debés cantar Flor primero' }
       p.nivelFlor = tipo
       p.florEnJuego = true
@@ -518,6 +520,35 @@ function procesarAccion(p, socketId, tipo, datos) {
       if (p.ptsA >= p.limite) { p.ganador = 'A'; return { ok: true, logA, logB, terminoRonda: true, terminoPartida: true } }
       if (p.ptsB >= p.limite) { p.ganador = 'B'; return { ok: true, logA, logB, terminoRonda: true, terminoPartida: true } }
       return { ok: true, logA, logB, terminoRonda: false }
+    }
+
+    case 'irse_al_mazo': {
+      logA.push(esA ? '🃏 Te fuiste al mazo' : `🃏 ${nRivA} se fue al mazo`)
+      logB.push(esA ? `🃏 ${nRivB} se fue al mazo` : '🃏 Te fuiste al mazo')
+      // Pending envido: rival wins 1 (implicit no quiero)
+      if (!p.envidoResuelto && p.envidoPendientePara != null) {
+        if (rival === 'A') p.ptsA += 1; else p.ptsB += 1
+        p.envidoResuelto = true
+        p.envidoPendientePara = null
+        logA.push(esA ? `❌ Envido perdido — +1 para ${nRivA}` : `✅ +1 por el envido`)
+        logB.push(esA ? `✅ +1 por el envido` : `❌ Envido perdido — +1 para ${nRivB}`)
+      }
+      // Pending truco: implicit no quiero (1/2/3 pts)
+      if (!p.trucoResuelto && p.trucoPendientePara != null) {
+        const nqPts = { truco: 1, retruco: 2, vale4: 3 }[p.trucoCantado] || 1
+        if (rival === 'A') p.ptsA += nqPts; else p.ptsB += nqPts
+        p.trucoResuelto = true
+        p.trucoPendientePara = null
+        logA.push(esA ? `❌ Truco perdido — +${nqPts} para ${nRivA}` : `✅ +${nqPts} por el truco`)
+        logB.push(esA ? `✅ +${nqPts} por el truco` : `❌ Truco perdido — +${nqPts} para ${nRivB}`)
+        if (p.florA || p.florB) p.mostrarCartasRival = true
+        p.rondaTerminada = true
+        if (p.ptsA >= p.limite) { p.ganador = 'A'; return { ok: true, logA, logB, terminoRonda: true, terminoPartida: true } }
+        if (p.ptsB >= p.limite) { p.ganador = 'B'; return { ok: true, logA, logB, terminoRonda: true, terminoPartida: true } }
+        return { ok: true, logA, logB, terminoRonda: true, terminoPartida: false }
+      }
+      const terminoPartida = _terminarRonda(p, rival, logA, logB)
+      return { ok: true, logA, logB, terminoRonda: true, terminoPartida }
     }
 
     default:
@@ -896,7 +927,9 @@ function procesarAccion2v2(p, socketId, tipo, datos) {
     case 'contraFlor': {
       if (!p.florActiva) return { ok: false, error: 'No hay flor activa' }
       if (p.florResuelta) return { ok: false, error: 'La flor ya fue resuelta' }
-      if (p.florPendientePara != null) return { ok: false, error: 'Hay una flor pendiente de respuesta' }
+      const pendingParaMiFlor2v2 = p.florPendientePara === miEquipo
+      if (p.florPendientePara != null && !pendingParaMiFlor2v2) return { ok: false, error: 'Hay una flor pendiente de respuesta' }
+      if (pendingParaMiFlor2v2 && tipo === 'flor') return { ok: false, error: 'Ya hay flor cantada — subí o respondé' }
       if (tipo === 'contraFlor' && p.florCantadaPor == null) return { ok: false, error: 'Debes cantar Flor primero' }
       p.nivelFlor = tipo
       p.florEnJuego = true
@@ -938,6 +971,33 @@ function procesarAccion2v2(p, socketId, tipo, datos) {
       if (p.ptsA >= p.limite) { p.ganador = 'A'; return { ok: true, logs, terminoRonda: true, terminoPartida: true } }
       if (p.ptsB >= p.limite) { p.ganador = 'B'; return { ok: true, logs, terminoRonda: true, terminoPartida: true } }
       return { ok: true, logs, terminoRonda: false, terminoPartida: false }
+    }
+
+    case 'irse_al_mazo': {
+      addTeam(miEquipo, `${miNombre} se fue al mazo`)
+      addTeam(rivalEquipo, `${miNombre} se fue al mazo — ganan ustedes`)
+      if (!p.envidoResuelto && p.envidoPendientePara != null) {
+        if (rivalEquipo === 'A') p.ptsA += 1; else p.ptsB += 1
+        p.envidoResuelto = true
+        p.envidoPendientePara = null
+        addTeam(rivalEquipo, '+1 por el envido')
+        addTeam(miEquipo, 'Envido perdido — +1 para los rivales')
+      }
+      if (!p.trucoResuelto && p.trucoPendientePara != null) {
+        const nqPts = { truco: 1, retruco: 2, vale4: 3 }[p.trucoCantado] || 1
+        if (rivalEquipo === 'A') p.ptsA += nqPts; else p.ptsB += nqPts
+        p.trucoResuelto = true
+        p.trucoPendientePara = null
+        addTeam(rivalEquipo, `+${nqPts} por el truco`)
+        addTeam(miEquipo, `Truco perdido — +${nqPts} para los rivales`)
+        if (p.sockets.some(sid => p.flors[sid])) p.mostrarCartasRival = true
+        p.rondaTerminada = true
+        if (p.ptsA >= p.limite) { p.ganador = 'A'; return { ok: true, logs, terminoRonda: true, terminoPartida: true } }
+        if (p.ptsB >= p.limite) { p.ganador = 'B'; return { ok: true, logs, terminoRonda: true, terminoPartida: true } }
+        return { ok: true, logs, terminoRonda: true, terminoPartida: false }
+      }
+      const terminoPartida = _terminarRonda2v2(p, rivalEquipo, logs)
+      return { ok: true, logs, terminoRonda: true, terminoPartida }
     }
 
     default:

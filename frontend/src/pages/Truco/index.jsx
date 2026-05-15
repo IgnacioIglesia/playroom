@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import Navbar from '../../components/Navbar'
+import { usePageTitle } from '../../hooks/usePageTitle'
 import Footer from '../../components/Footer'
 import MesaTruco from './MesaTruco'
 import {
@@ -10,6 +11,7 @@ import {
 import { DELAY_MANO } from './constantes'
 
 export default function Truco() {
+  usePageTitle('Truco vs Máquina')
   const { usuario } = useAuth()
   const [pantalla, setPantalla] = useState('menu')
   const [limite, setLimite] = useState(30)

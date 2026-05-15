@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { db } from '../firebase'
 import { collection, getDocs } from 'firebase/firestore'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 import EmptyState from '../components/EmptyState'
 
@@ -15,10 +16,10 @@ const DIFF_LABEL = {
 }
 
 const JUEGOS = [
-  { id: 'truco',      nombre: 'Truco',      icono: '🃏', coleccion: 'ranking_truco',      tipo: 'victorias'  },
-  { id: 'sudoku',     nombre: 'Sudoku',     icono: '🔢', coleccion: 'ranking_sudoku',     tipo: 'puntuacion' },
-  { id: 'buscaminas', nombre: 'Buscaminas', icono: '💣', coleccion: 'ranking_buscaminas', tipo: 'puntuacion' },
-  { id: 'palabras',   nombre: 'Palabras',   icono: '▦',  coleccion: 'ranking_palabras',   tipo: 'racha' },
+  { id: 'truco',      nombre: 'Truco',      icono: 'TR', coleccion: 'ranking_truco',      tipo: 'victorias'  },
+  { id: 'sudoku',     nombre: 'Sudoku',     icono: 'SU', coleccion: 'ranking_sudoku',     tipo: 'puntuacion' },
+  { id: 'buscaminas', nombre: 'Buscaminas', icono: 'BU', coleccion: 'ranking_buscaminas', tipo: 'puntuacion' },
+  { id: 'palabras',   nombre: 'Palabras',   icono: 'AB', coleccion: 'ranking_palabras',   tipo: 'racha' },
 ]
 
 function formatTiempo(s) {
@@ -27,7 +28,12 @@ function formatTiempo(s) {
   return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`
 }
 
-const MEDALLA = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
+function MedalBadge({ pos }) {
+  if (pos === 0) return <div className="w-7 h-7 rounded-full bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center text-yellow-400 text-xs font-black flex-shrink-0">1</div>
+  if (pos === 1) return <div className="w-7 h-7 rounded-full bg-gray-300/10 border border-gray-300/25 flex items-center justify-center text-gray-300 text-xs font-black flex-shrink-0">2</div>
+  if (pos === 2) return <div className="w-7 h-7 rounded-full bg-orange-500/15 border border-orange-400/30 flex items-center justify-center text-orange-300 text-xs font-black flex-shrink-0">3</div>
+  return <span className="text-gray-600 text-sm font-bold tabular-nums w-7 text-center flex-shrink-0">{pos + 1}</span>
+}
 
 function RankingAvatar({ jugador }) {
   const iniciales = (jugador.nombre || 'Jugador').slice(0, 2).toUpperCase()
@@ -49,6 +55,7 @@ function RankingAvatar({ jugador }) {
 }
 
 export default function Ranking() {
+  usePageTitle('Ranking')
   const [juegoActivo, setJuegoActivo] = useState('truco')
   const [ranking, setRanking]         = useState([])
   const [cargando, setCargando]       = useState(true)
@@ -156,7 +163,7 @@ export default function Ranking() {
                     : 'text-gray-400 hover:text-white hover:bg-white/[0.05]'
                 }`}
               >
-                <span>{j.icono}</span>
+                <span className="text-[10px] font-extrabold opacity-70">{j.icono}</span>
                 <span>{j.nombre}</span>
               </button>
             ))}
@@ -164,8 +171,15 @@ export default function Ranking() {
 
           {/* Content */}
           {cargando ? (
-            <div className="flex justify-center py-20">
-              <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+            <div className="flex flex-col gap-2">
+              {[0,1,2,3,4,5,6,7].map(i => (
+                <div key={i} className="flex items-center gap-3 bg-white/[0.02] rounded-2xl px-4 py-3">
+                  <div className="w-5 h-4 bg-white/[0.06] rounded animate-pulse flex-shrink-0" />
+                  <div className="w-8 h-8 rounded-full bg-white/[0.06] animate-pulse flex-shrink-0" />
+                  <div className="flex-1 h-4 bg-white/[0.06] rounded-lg animate-pulse" />
+                  <div className="w-16 h-4 bg-white/[0.06] rounded-lg animate-pulse" />
+                </div>
+              ))}
             </div>
           ) : ranking.length === 0 ? (
             <EmptyState
@@ -179,7 +193,6 @@ export default function Ranking() {
             /* ── Truco ── */
             <div className="flex flex-col gap-3">
               {ranking.map((jugador, i) => {
-                const medalla = MEDALLA(i)
                 return (
                   <div key={i} className={`flex items-center gap-4 bg-white/[0.03] border rounded-2xl px-5 py-4 transition-all ${
                     i === 0 ? 'border-yellow-500/30 bg-yellow-500/[0.02]'
@@ -187,12 +200,7 @@ export default function Ranking() {
                     : i === 2 ? 'border-orange-500/20'
                     : 'border-white/[0.06]'
                   }`}>
-                    <div className="w-7 text-center flex-shrink-0">
-                      {medalla
-                        ? <span className="text-xl">{medalla}</span>
-                        : <span className="text-gray-600 text-sm font-bold tabular-nums">{i + 1}</span>
-                      }
-                    </div>
+                    <MedalBadge pos={i} />
                     <RankingAvatar jugador={jugador} />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-white text-sm truncate">{jugador.nombre}</p>
@@ -222,7 +230,6 @@ export default function Ranking() {
             /* ── Adivina la Palabra ── */
             <div className="flex flex-col gap-3">
               {ranking.map((jugador, i) => {
-                const medalla = MEDALLA(i)
                 return (
                   <div key={i} className={`flex items-center gap-4 bg-white/[0.03] border rounded-2xl px-5 py-4 transition-all ${
                     i === 0 ? 'border-yellow-500/30 bg-yellow-500/[0.02]'
@@ -230,12 +237,7 @@ export default function Ranking() {
                     : i === 2 ? 'border-orange-500/20'
                     : 'border-white/[0.06]'
                   }`}>
-                    <div className="w-7 text-center flex-shrink-0">
-                      {medalla
-                        ? <span className="text-xl">{medalla}</span>
-                        : <span className="text-gray-600 text-sm font-bold tabular-nums">{i + 1}</span>
-                      }
-                    </div>
+                    <MedalBadge pos={i} />
                     <RankingAvatar jugador={jugador} />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-white text-sm truncate">{jugador.nombre}</p>
@@ -257,7 +259,6 @@ export default function Ranking() {
             /* ── Sudoku / Buscaminas ── */
             <div className="flex flex-col gap-3">
               {ranking.map((jugador, i) => {
-                const medalla = MEDALLA(i)
                 return (
                   <div key={i} className={`flex items-center gap-4 bg-white/[0.03] border rounded-2xl px-5 py-4 transition-all ${
                     i === 0 ? 'border-yellow-500/30 bg-yellow-500/[0.02]'
@@ -265,12 +266,7 @@ export default function Ranking() {
                     : i === 2 ? 'border-orange-500/20'
                     : 'border-white/[0.06]'
                   }`}>
-                    <div className="w-7 text-center flex-shrink-0">
-                      {medalla
-                        ? <span className="text-xl">{medalla}</span>
-                        : <span className="text-gray-600 text-sm font-bold tabular-nums">{i + 1}</span>
-                      }
-                    </div>
+                    <MedalBadge pos={i} />
                     <RankingAvatar jugador={jugador} />
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-white text-sm truncate">{jugador.nombre}</p>

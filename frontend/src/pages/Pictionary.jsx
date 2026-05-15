@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import { SOCKET_URL } from '../config/socket'
@@ -72,6 +73,7 @@ function Lobby({ connected, error, code, onCreate, onJoin, onBack }) {
 }
 
 export default function Pictionary() {
+  usePageTitle('Pictionary')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { usuario } = useAuth()
@@ -80,6 +82,7 @@ export default function Pictionary() {
   const canvasRef = useRef(null)
   const drawingRef = useRef(false)
   const lastRef = useRef(null)
+  const lastEmitRef = useRef(0)
   const joinedRef = useRef(false)
 
   const [connected, setConnected] = useState(false)
@@ -177,7 +180,11 @@ export default function Pictionary() {
     const next = point(e)
     const stroke = { from: lastRef.current, to: next, color, size }
     drawLine(stroke)
-    sockRef.current?.emit('pictionary_dibujo', stroke)
+    const now = Date.now()
+    if (now - lastEmitRef.current >= 50) {
+      sockRef.current?.emit('pictionary_dibujo', stroke)
+      lastEmitRef.current = now
+    }
     lastRef.current = next
   }
   const stopDraw = () => { drawingRef.current = false; lastRef.current = null }

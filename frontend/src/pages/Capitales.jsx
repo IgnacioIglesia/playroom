@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 import capitalesES from '../data/capitales_es.js'
 import paisesES from '../data/paises_es.js'
@@ -9,11 +10,11 @@ const TOTAL_PREGUNTAS = 10
 const TIEMPO_POR_PREGUNTA = 20
 
 const REGIONES = {
-  americas: '🌎 América',
-  europe: '🌍 Europa',
-  asia: '🌏 Asia',
-  africa: '🌍 África',
-  all: '🌐 Todos los países',
+  americas: 'América',
+  europe: 'Europa',
+  asia: 'Asia',
+  africa: 'África',
+  all: 'Todos los países',
 }
 
 function mezclar(arr) {
@@ -29,6 +30,7 @@ function generarOpciones(capitalCorrecta, todosLosPaises) {
 }
 
 export default function Capitales() {
+  usePageTitle('Capitales del Mundo')
   const navigate = useNavigate()
 
   const [pantalla, setPantalla] = useState('menu')
@@ -169,8 +171,10 @@ export default function Capitales() {
           <div className="relative z-10 w-full max-w-2xl">
 
             <div className="text-center mb-10">
-              <div className="inline-flex w-16 h-16 rounded-2xl bg-purple-600/20 border border-purple-500/30 items-center justify-center text-3xl mb-5">
-                🌍
+              <div className="inline-flex w-16 h-16 rounded-2xl bg-purple-600/20 border border-purple-500/30 items-center justify-center mb-5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-8 h-8 text-purple-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253M3.284 14.253A8.959 8.959 0 013 12c0-.778.099-1.533.284-2.253"/>
+                </svg>
               </div>
               <h1 className="text-4xl font-extrabold">Adivina la Capital</h1>
               <p className="text-gray-500 mt-2 text-sm">
@@ -184,8 +188,8 @@ export default function Capitales() {
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-3xl p-6 flex flex-col gap-4">
                 <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Modo de juego</h2>
                 {[
-                  { key: 'solo', label: '🎮 Solo', desc: 'Jugás contra la máquina a tu ritmo.' },
-                  { key: 'amigo', label: '👥 Con amigo', desc: 'Turnos alternados, gana el que más acierta.' },
+                  { key: 'solo', label: 'Solo', desc: 'Jugás contra la máquina a tu ritmo.' },
+                  { key: 'amigo', label: 'Con amigo', desc: 'Turnos alternados, gana el que más acierta.' },
                 ].map((m) => (
                   <button
                     key={m.key}
@@ -234,7 +238,7 @@ export default function Capitales() {
                       : 'border-white/[0.08] bg-white/[0.02] text-gray-400 hover:border-white/[0.15] hover:text-white'
                   }`}
                 >
-                  <span>🌐 Todos los países</span>
+                  <span>Todos los países</span>
                   <span className="text-xs opacity-50 font-normal">{todosPaises.length} países</span>
                 </button>
 
@@ -411,15 +415,16 @@ export default function Capitales() {
     const porcentaje = Math.round((puntaje / TOTAL_PREGUNTAS) * 100)
     let mensaje = '¡Seguí practicando!'
     let submensaje = 'No te rindas, la próxima te va mejor.'
-    let emoji = '💪'
     let colorPuntaje = 'text-gray-400'
+    let iconColor = 'text-gray-400'
+    let iconBg = 'bg-white/[0.05] border-white/[0.10]'
 
     if (porcentaje >= 90) {
-      mensaje = '¡Excelente!'; submensaje = 'Sos un crack de la geografía.'; emoji = '🏆'; colorPuntaje = 'text-yellow-400'
+      mensaje = '¡Excelente!'; submensaje = 'Sos un crack de la geografía.'; colorPuntaje = 'text-yellow-400'; iconColor = 'text-yellow-400'; iconBg = 'bg-yellow-500/10 border-yellow-500/20'
     } else if (porcentaje >= 70) {
-      mensaje = '¡Muy bien!'; submensaje = 'Sabés bastante de geografía.'; emoji = '🌟'; colorPuntaje = 'text-purple-400'
+      mensaje = '¡Muy bien!'; submensaje = 'Sabés bastante de geografía.'; colorPuntaje = 'text-purple-400'; iconColor = 'text-purple-400'; iconBg = 'bg-purple-500/10 border-purple-500/20'
     } else if (porcentaje >= 50) {
-      mensaje = '¡Bien!'; submensaje = 'Podés mejorar con más práctica.'; emoji = '😊'; colorPuntaje = 'text-blue-400'
+      mensaje = '¡Bien!'; submensaje = 'Podés mejorar con más práctica.'; colorPuntaje = 'text-blue-400'; iconColor = 'text-blue-400'; iconBg = 'bg-blue-500/10 border-blue-500/20'
     }
 
     return (
@@ -431,7 +436,11 @@ export default function Capitales() {
           <div className="relative z-10 w-full max-w-lg">
             <div className="bg-white/[0.03] border border-white/[0.06] rounded-3xl p-10 flex flex-col items-center gap-6 text-center">
 
-              <span className="text-7xl">{emoji}</span>
+              <div className={`w-20 h-20 rounded-full border flex items-center justify-center ${iconBg}`}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className={`w-10 h-10 ${iconColor}`}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0"/>
+                </svg>
+              </div>
 
               <div>
                 <h2 className="text-4xl font-extrabold">{mensaje}</h2>

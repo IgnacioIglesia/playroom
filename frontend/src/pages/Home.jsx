@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 
 function useInView(threshold = 0.12) {
@@ -20,12 +21,12 @@ function useInView(threshold = 0.12) {
 }
 
 const GAMES = [
-  { name: 'Truco',      img: '/juegos/truco.svg',      desc: 'El clásico truco uruguayo',   tag: 'Estrategia' },
-  { name: 'Blackjack',  img: '/juegos/blackjack.svg',   desc: 'Llegá al 21',            tag: 'Cartas'     },
-  { name: 'Impostor',   img: '/juegos/impostor.svg',    desc: 'Encontrá al traidor',    tag: 'Social'     },
-  { name: 'Trivia',     img: '/juegos/trivia.svg',      desc: 'Poné a prueba tu mente', tag: 'Quiz'       },
-  { name: 'Poker',      img: '/juegos/poker.svg',       desc: "Texas Hold'em",          tag: 'Cartas'     },
-  { name: 'Buscaminas', img: '/juegos/buscaminas.svg',  desc: 'Clásico de PC',          tag: 'Puzzle'     },
+  { name: 'Truco Online', img: '/juegos/truco.svg',     desc: 'El clásico rioplatense online',  tag: 'Cartas',    route: '/juegos/truco-online', online: true  },
+  { name: 'Poker',        img: '/juegos/poker.svg',     desc: "Texas Hold'em con amigos",       tag: 'Cartas',    route: '/juegos/poker',         online: true  },
+  { name: 'Uno',          img: '/juegos/uno.svg',       desc: 'La última carta gana',           tag: 'Cartas',    route: '/juegos/uno',           online: true  },
+  { name: 'Pictionary',   img: '/juegos/pictionary.svg',desc: 'Dibujá y adiviná',              tag: 'Social',    route: '/juegos/pictionary',    online: true  },
+  { name: 'Sudoku',       img: '/juegos/sudoku.svg',    desc: 'Lógica y concentración',         tag: 'Lógica',    route: '/juegos/sudoku',        online: false },
+  { name: 'Buscaminas',   img: '/juegos/buscaminas.svg',desc: 'Cinco niveles de dificultad',    tag: 'Estrategia',route: '/juegos/buscaminas',    online: false },
 ]
 
 const FEATURES = [
@@ -52,6 +53,7 @@ const FEATURES = [
 ]
 
 export default function Home() {
+  usePageTitle('Inicio')
   const navigate = useNavigate()
   const [heroVisible, setHeroVisible] = useState(false)
   const [featuresRef, featuresVisible] = useInView()
@@ -127,12 +129,17 @@ export default function Home() {
       </section>
 
       {/* ── MARQUEE ── */}
-      <div className="relative overflow-hidden border-y border-white/[0.05] bg-white/[0.015] py-6">
-        <div className="flex gap-6 animate-marquee w-max">
+      <div className="relative overflow-hidden border-y border-white/[0.05] bg-white/[0.015] py-5">
+        <div className="flex gap-4 animate-marquee w-max">
           {[...GAMES, ...GAMES].map((g, i) => (
-            <div key={i} className="flex items-center gap-3 px-5 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] flex-shrink-0">
-              <img src={g.img} alt={g.name} className="w-7 h-7 object-contain opacity-75" />
-              <span className="text-gray-300 font-semibold text-sm whitespace-nowrap">{g.name}</span>
+            <div
+              key={i}
+              onClick={() => navigate(g.route)}
+              className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] flex-shrink-0 cursor-pointer hover:border-purple-500/30 hover:bg-white/[0.06] transition-colors"
+            >
+              <img src={g.img} alt={g.name} className="w-6 h-6 object-contain opacity-75" />
+              <span className="text-gray-300 font-semibold text-xs whitespace-nowrap">{g.name}</span>
+              {g.online && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0" />}
             </div>
           ))}
         </div>
@@ -182,46 +189,61 @@ export default function Home() {
             <h2 className="text-4xl md:text-5xl font-bold">Elegí tu juego</h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {GAMES.map((g, i) => (
               <div
                 key={g.name}
-                onClick={() => navigate('/juegos')}
-                className="group cursor-pointer bg-white/[0.03] border border-white/[0.07] hover:border-purple-500/35 rounded-2xl p-8 flex flex-col items-center gap-5 hover:bg-white/[0.055]"
+                onClick={() => navigate(g.route)}
+                className="group cursor-pointer rounded-2xl overflow-hidden flex flex-col border border-purple-500/15 hover:border-purple-500/45 bg-[#0d0b1a] hover:bg-[#110e22] transition-all duration-200"
                 style={{
                   opacity: gamesVisible ? 1 : 0,
                   transform: gamesVisible ? 'translateY(0)' : 'translateY(24px)',
-                  transition: `opacity 0.55s ease ${i * 75}ms, transform 0.55s ease ${i * 75}ms, background-color 0.2s, border-color 0.2s, box-shadow 0.2s`,
-                  boxShadow: 'none',
+                  transition: `opacity 0.55s ease ${i * 70}ms, transform 0.55s ease ${i * 70}ms, background-color 0.2s, border-color 0.2s`,
                 }}
-                onMouseEnter={e => e.currentTarget.style.boxShadow = '0 0 40px rgba(139,92,246,0.08)'}
-                onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
               >
-                <img
-                  src={g.img}
-                  alt={g.name}
-                  className="w-20 h-20 object-contain group-hover:scale-110 transition-transform duration-300"
-                />
-                <div className="text-center">
-                  <p className="text-white font-bold text-base mb-1">{g.name}</p>
-                  <p className="text-gray-500 text-sm">{g.desc}</p>
+                {/* Image */}
+                <div
+                  className="relative h-28 overflow-hidden flex-shrink-0"
+                  style={{ background: 'linear-gradient(145deg, rgba(88,28,135,0.38) 0%, rgba(30,8,60,0.62) 100%)' }}
+                >
+                  <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(rgba(139,92,246,0.07) 1px, transparent 1px)', backgroundSize: '14px 14px' }} />
+                  <img src={g.img} alt={g.name} className="relative w-full h-full object-contain p-4 group-hover:scale-[1.07] transition-transform duration-300 drop-shadow-lg" />
+                  <span className="absolute top-2 left-2 text-[9px] px-2 py-0.5 rounded-full font-bold backdrop-blur-sm bg-black/50 text-purple-300 border border-purple-700/25">
+                    {g.tag}
+                  </span>
+                  {g.online && (
+                    <span className="absolute top-2 right-2 flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full font-bold backdrop-blur-sm bg-green-950/70 text-green-400 border border-green-700/30">
+                      <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
+                      Online
+                    </span>
+                  )}
                 </div>
-                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-purple-950/60 text-purple-300 border border-purple-800/40">
-                  {g.tag}
-                </span>
+                {/* Content */}
+                <div className="p-3.5 flex flex-col gap-1.5">
+                  <p className="text-white font-bold text-sm">{g.name}</p>
+                  <p className="text-gray-500 text-xs leading-relaxed">{g.desc}</p>
+                  <div className="pt-2.5 mt-0.5 border-t border-white/[0.05] flex justify-end">
+                    <span className="text-purple-400 text-[11px] font-semibold group-hover:text-purple-300 transition-colors">
+                      Jugar →
+                    </span>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
 
           <div
-            className="flex justify-center mt-12"
+            className="flex justify-center mt-10"
             style={{ opacity: gamesVisible ? 1 : 0, transform: gamesVisible ? 'translateY(0)' : 'translateY(16px)', transition: 'opacity 0.6s ease 0.5s, transform 0.6s ease 0.5s' }}
           >
             <button
               onClick={() => navigate('/juegos')}
-              className="border border-white/10 hover:border-purple-500/40 bg-white/[0.03] hover:bg-white/[0.06] text-white px-10 py-4 rounded-2xl text-base font-semibold transition-all"
+              className="flex items-center gap-2 border border-white/[0.09] hover:border-purple-500/40 bg-white/[0.03] hover:bg-white/[0.06] text-white px-8 py-3.5 rounded-2xl text-sm font-semibold transition-all"
             >
-              Ver todos los juegos →
+              Ver los {15} juegos
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
+              </svg>
             </button>
           </div>
         </div>

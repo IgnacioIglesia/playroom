@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import { useNavigationGuard } from '../context/NavigationGuardContext'
@@ -109,6 +110,7 @@ const MineIcon = ({ className = 'w-4 h-4' }) => (
 
 // ── Componente principal ────────────────────────────────────────────────────
 export default function Buscaminas() {
+  usePageTitle('Buscaminas')
   const { usuario } = useAuth()
   const { setGuard, clearGuard } = useNavigationGuard()
 
@@ -123,6 +125,12 @@ export default function Buscaminas() {
   const [guardado, setGuardado]     = useState(false)
   const [modoFlag, setModoFlag]     = useState(false)
   const [ranking, setRanking]       = useState([])
+  const [partidaGuardada, setPartidaGuardada] = useState(() => {
+    try {
+      const s = localStorage.getItem('playroom_buscaminas_save')
+      return s ? JSON.parse(s) : null
+    } catch { return null }
+  })
 
   const diff         = dificultad ? DIFICULTADES[dificultad] : null
   const minesTotal   = diff?.mines || 0
@@ -145,6 +153,13 @@ export default function Buscaminas() {
     if (pantalla === 'menu') cargarRanking()
   }, [pantalla])
 
+  useEffect(() => {
+    if (!board || firstClick || gameState !== 'playing') return
+    try {
+      localStorage.setItem('playroom_buscaminas_save', JSON.stringify({ board, tiempo, flagsUsed, dificultad }))
+    } catch {}
+  }, [board, tiempo])
+
   const cargarRanking = async () => {
     try {
       const q = query(collection(db, 'ranking_buscaminas'), orderBy('puntuacion', 'desc'), limit(10))
@@ -153,7 +168,24 @@ export default function Buscaminas() {
     } catch {}
   }
 
+  const continuarPartida = () => {
+    const s = partidaGuardada
+    if (!s) return
+    setDificultad(s.dificultad)
+    setBoard(s.board)
+    setGameState('playing')
+    setTiempo(s.tiempo || 0)
+    setFlagsUsed(s.flagsUsed || 0)
+    setFirstClick(false)
+    setPuntuacion(0)
+    setGuardado(false)
+    setModoFlag(false)
+    setPantalla('juego')
+  }
+
   const iniciarJuego = (diff) => {
+    localStorage.removeItem('playroom_buscaminas_save')
+    setPartidaGuardada(null)
     const { rows, cols } = DIFICULTADES[diff]
     setDificultad(diff)
     setBoard(Array(rows).fill(null).map(() => Array(cols).fill(null).map(crearCelda)))
@@ -198,6 +230,8 @@ export default function Buscaminas() {
       exploded[r][c].isExploded = true
       setBoard(exploded)
       setGameState('lost')
+      localStorage.removeItem('playroom_buscaminas_save')
+      setPartidaGuardada(null)
       setTimeout(() => setPantalla('resultado'), 900)
       return
     }
@@ -211,6 +245,8 @@ export default function Buscaminas() {
       const pts = calcularPuntuacion(dificultad, tiempo)
       setPuntuacion(pts)
       setGameState('won')
+      localStorage.removeItem('playroom_buscaminas_save')
+      setPartidaGuardada(null)
       if (usuario) {
         try {
           await addDoc(collection(db, 'ranking_buscaminas'), {
@@ -289,6 +325,21 @@ export default function Buscaminas() {
               <p className="text-gray-500 mt-1 text-sm">Encontrá todas las minas sin detonar ninguna</p>
             </div>
           </div>
+
+          {partidaGuardada && (
+            <div className="bg-white/[0.03] border border-purple-700/25 rounded-3xl p-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-white font-semibold text-sm">Partida guardada</p>
+                <p className="text-gray-500 text-xs mt-0.5">
+                  {DIFICULTADES[partidaGuardada.dificultad]?.label} · {fmt(partidaGuardada.tiempo)}
+                </p>
+              </div>
+              <button onClick={continuarPartida}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold transition flex-shrink-0">
+                Continuar →
+              </button>
+            </div>
+          )}
 
           <div className="bg-white/[0.03] border border-white/[0.07] rounded-3xl p-6 flex flex-col gap-3">
             <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Seleccioná la dificultad</p>
@@ -416,9 +467,14 @@ export default function Buscaminas() {
           </div>
 
           <button onClick={resetGame}
-            className="w-10 h-10 rounded-xl bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] flex items-center justify-center transition text-lg"
+            className="w-10 h-10 rounded-xl bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] flex items-center justify-center transition"
             title="Nueva partida">
-            {gameState === 'won' ? '😎' : gameState === 'lost' ? '😵' : gameState === 'playing' ? '😀' : '🙂'}
+            {gameState === 'won'
+              ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-green-400"><path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z"/></svg>
+              : gameState === 'lost'
+              ? <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-red-400"><path strokeLinecap="round" strokeLinejoin="round" d="M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z"/></svg>
+              : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-5 h-5 text-gray-400"><path strokeLinecap="round" strokeLinejoin="round" d="M15.182 15.182a4.5 4.5 0 01-6.364 0M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z"/></svg>
+            }
           </button>
 
           <div className="flex items-center gap-2 text-purple-300 font-mono text-sm min-w-[60px] justify-end">

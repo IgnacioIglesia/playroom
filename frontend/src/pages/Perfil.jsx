@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { updateProfile } from 'firebase/auth'
-import { doc, setDoc, getDoc, collection, getDocs, query, where, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDoc, collection, getDocs, query, where, orderBy, limit, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { useAuth } from '../context/AuthContext'
 import EmptyState from '../components/EmptyState'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 import Avatar from '../components/Avatar'
 
@@ -34,12 +35,12 @@ const DIFF_COLOR = {
 }
 
 const JUEGOS_CATALOG = [
-  { id: 'truco',        nombre: 'Truco vs Máquina', icono: '🃏', ruta: '/juegos/truco'        },
-  { id: 'truco-online', nombre: 'Truco Online',     icono: '🌐', ruta: '/juegos/truco-online'  },
-  { id: 'sudoku',       nombre: 'Sudoku',           icono: '🔢', ruta: '/juegos/sudoku'        },
-  { id: 'buscaminas',   nombre: 'Buscaminas',       icono: '💣', ruta: '/juegos/buscaminas'    },
-  { id: 'banderas',     nombre: 'Banderas',         icono: '🏳️', ruta: '/juegos/banderas'      },
-  { id: 'capitales',    nombre: 'Capitales',        icono: '🌍', ruta: '/juegos/capitales'     },
+  { id: 'truco',        nombre: 'Truco vs Máquina', icono: 'TR', ruta: '/juegos/truco'        },
+  { id: 'truco-online', nombre: 'Truco Online',     icono: 'TO', ruta: '/juegos/truco-online'  },
+  { id: 'sudoku',       nombre: 'Sudoku',           icono: 'SU', ruta: '/juegos/sudoku'        },
+  { id: 'buscaminas',   nombre: 'Buscaminas',       icono: 'BU', ruta: '/juegos/buscaminas'    },
+  { id: 'banderas',     nombre: 'Banderas',         icono: 'BA', ruta: '/juegos/banderas'      },
+  { id: 'capitales',    nombre: 'Capitales',        icono: 'CA', ruta: '/juegos/capitales'     },
 ]
 
 function fmt(s) {
@@ -54,10 +55,11 @@ function timeAgo(date) {
   if (diff < 3600)     return `Hace ${Math.floor(diff / 60)} min`
   if (diff < 86400)    return `Hace ${Math.floor(diff / 3600)}h`
   if (diff < 604800)   return `Hace ${Math.floor(diff / 86400)}d`
-  return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+  return date.toLocaleDateString('es-UY', { day: 'numeric', month: 'short' })
 }
 
 export default function Perfil() {
+  usePageTitle('Mi perfil')
   const { usuario, refrescarUsuario } = useAuth()
   const navigate = useNavigate()
 
@@ -66,6 +68,8 @@ export default function Perfil() {
   const [stats, setStats]         = useState(null)
   const [historial, setHistorial] = useState([])
   const [favoritos, setFavoritos] = useState([])
+  const [historialRivales, setHistorialRivales] = useState([])
+  const [elo, setElo]               = useState(null)
 
   // Edit form
   const [nombre, setNombre]       = useState('')
@@ -88,26 +92,46 @@ export default function Perfil() {
     try {
       // Load favorites from Firestore
       const userDoc = await getDoc(doc(db, 'users', usuario.uid)).catch(() => null)
-      if (userDoc?.exists()) setFavoritos(userDoc.data().favoritos || [])
+      if (userDoc?.exists()) {
+        setFavoritos(userDoc.data().favoritos || [])
+        if (userDoc.data().elo != null) setElo(userDoc.data().elo)
+      }
 
       // Load game stats concurrently
-      const [trucoSnap, sudokuSnap, buscaminasSnap] = await Promise.all([
+      const [trucoSnap, sudokuSnap, buscaminasSnap, historialSnap] = await Promise.all([
         getDocs(query(collection(db, 'ranking_truco'),      where('uid', '==', usuario.uid))).catch(() => null),
         getDocs(query(collection(db, 'ranking_sudoku'),     where('uid', '==', usuario.uid))).catch(() => null),
         getDocs(query(collection(db, 'ranking_buscaminas'), where('uid', '==', usuario.uid))).catch(() => null),
+        getDocs(query(collection(db, 'users', usuario.uid, 'historial'), orderBy('fecha', 'desc'), limit(15))).catch(() => null),
       ])
 
       // Process truco
-      let truco = { partidas: 0, victorias: 0, derrotas: 0 }
+      let truco = { partidas: 0, victorias: 0, derrotas: 0, racha: 0, ultimaPartida: null, historialReciente: [] }
+      const trucoEntries = []
       trucoSnap?.forEach(d => {
-        const data = d.data(); truco.partidas++
+        const data = d.data()
+        trucoEntries.push({ resultado: data.resultado, fecha: data.fecha?.toDate?.() || null })
+        truco.partidas++
         if (data.resultado === 'victoria') truco.victorias++; else truco.derrotas++
       })
+      trucoEntries.sort((a, b) => (b.fecha || 0) - (a.fecha || 0))
+      if (trucoEntries.length > 0) {
+        truco.ultimaPartida = trucoEntries[0].fecha
+        truco.historialReciente = trucoEntries.slice(0, 10).map(e => e.resultado)
+        const primerRes = trucoEntries[0].resultado
+        let streak = 0
+        for (const e of trucoEntries) {
+          if (e.resultado === primerRes) streak++; else break
+        }
+        truco.racha = primerRes === 'victoria' ? streak : -streak
+      }
 
       // Process sudoku
-      let sudoku = { partidas: 0, mejorPuntuacion: 0, mejorDificultad: null, menorErrores: null }
+      let sudoku = { partidas: 0, mejorPuntuacion: 0, mejorDificultad: null, menorErrores: null, ultimaPartida: null }
       sudokuSnap?.forEach(d => {
         const data = d.data(); sudoku.partidas++
+        const fecha = data.fecha?.toDate?.() || null
+        if (!sudoku.ultimaPartida || fecha > sudoku.ultimaPartida) sudoku.ultimaPartida = fecha
         if ((data.puntuacion || 0) > sudoku.mejorPuntuacion) {
           sudoku.mejorPuntuacion = data.puntuacion || 0
           sudoku.mejorDificultad = data.dificultad
@@ -116,9 +140,11 @@ export default function Perfil() {
       })
 
       // Process buscaminas
-      let buscaminas = { partidas: 0, mejorPuntuacion: 0, mejorDificultad: null }
+      let buscaminas = { partidas: 0, mejorPuntuacion: 0, mejorDificultad: null, ultimaPartida: null }
       buscaminasSnap?.forEach(d => {
         const data = d.data(); buscaminas.partidas++
+        const fecha = data.fecha?.toDate?.() || null
+        if (!buscaminas.ultimaPartida || fecha > buscaminas.ultimaPartida) buscaminas.ultimaPartida = fecha
         if ((data.puntuacion || 0) > buscaminas.mejorPuntuacion) {
           buscaminas.mejorPuntuacion = data.puntuacion || 0
           buscaminas.mejorDificultad = data.dificultad
@@ -126,6 +152,26 @@ export default function Perfil() {
       })
 
       setStats({ truco, sudoku, buscaminas })
+
+      // Process rival history
+      const rivalMap = new Map()
+      historialSnap?.forEach(d => {
+        const data = d.data()
+        const uid = data.rival_uid || '__anon__'
+        if (!rivalMap.has(uid)) {
+          rivalMap.set(uid, { nombre: data.rival_nombre || 'Rival', photo: data.rival_photo || '', victorias: 0, derrotas: 0, ultimaFecha: null })
+        }
+        const r = rivalMap.get(uid)
+        if (data.resultado === 'victoria') r.victorias++; else r.derrotas++
+        const fecha = data.fecha?.toDate?.() || null
+        if (fecha && (!r.ultimaFecha || fecha > r.ultimaFecha)) r.ultimaFecha = fecha
+      })
+      setHistorialRivales(
+        [...rivalMap.entries()]
+          .map(([uid, r]) => ({ ...r, uid }))
+          .sort((a, b) => (b.ultimaFecha || 0) - (a.ultimaFecha || 0))
+          .slice(0, 5)
+      )
 
       // Build merged history
       const entries = []
@@ -186,6 +232,10 @@ export default function Perfil() {
     ? Object.entries({ 'Truco': stats.truco.partidas, 'Sudoku': stats.sudoku.partidas, 'Buscaminas': stats.buscaminas.partidas })
         .sort((a, b) => b[1] - a[1])[0]
     : null
+  const ultimaActividad = stats
+    ? [stats.truco.ultimaPartida, stats.sudoku.ultimaPartida, stats.buscaminas.ultimaPartida]
+        .filter(Boolean).sort((a, b) => b - a)[0] || null
+    : null
 
   if (!usuario) return null
 
@@ -205,18 +255,37 @@ export default function Perfil() {
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-extrabold text-white truncate">{usuario.displayName || 'Sin nombre'}</h1>
               <p className="text-gray-500 text-sm truncate">{usuario.email}</p>
-              {totalPartidas > 0 && (
-                <div className="flex gap-3 mt-2">
+              <div className="flex gap-2 flex-wrap mt-2">
+                {totalPartidas > 0 && (
                   <span className="text-[10px] font-semibold bg-purple-950/60 border border-purple-700/30 text-purple-300 px-2.5 py-1 rounded-full">
-                    {totalPartidas} partidas jugadas
+                    {totalPartidas} partidas
                   </span>
-                  {masjugado?.[1] > 0 && (
-                    <span className="text-[10px] font-semibold bg-white/[0.04] border border-white/[0.08] text-gray-400 px-2.5 py-1 rounded-full">
-                      Más jugado: {masjugado[0]}
-                    </span>
-                  )}
-                </div>
-              )}
+                )}
+                {masjugado?.[1] > 0 && (
+                  <span className="text-[10px] font-semibold bg-white/[0.04] border border-white/[0.08] text-gray-400 px-2.5 py-1 rounded-full">
+                    + jugado: {masjugado[0]}
+                  </span>
+                )}
+                {stats?.truco.racha !== 0 && stats?.truco.racha != null && (
+                  <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
+                    stats.truco.racha > 0
+                      ? 'bg-green-950/50 border-green-700/30 text-green-400'
+                      : 'bg-red-950/50 border-red-700/30 text-red-400'
+                  }`}>
+                    Racha {stats.truco.racha > 0 ? `+${stats.truco.racha}` : stats.truco.racha}
+                  </span>
+                )}
+                {elo != null && (
+                  <span className="text-[10px] font-semibold bg-amber-950/50 border border-amber-700/30 text-amber-300 px-2.5 py-1 rounded-full tabular-nums">
+                    ELO {elo}
+                  </span>
+                )}
+                {ultimaActividad && (
+                  <span className="text-[10px] font-semibold bg-white/[0.03] border border-white/[0.06] text-gray-600 px-2.5 py-1 rounded-full">
+                    Activo {timeAgo(ultimaActividad)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -242,41 +311,114 @@ export default function Perfil() {
           {tab === 'resumen' && (
             <div className="flex flex-col gap-4">
               {cargando ? (
-                <div className="flex justify-center py-12">
-                  <div className="w-7 h-7 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin" />
+                <div className="flex flex-col gap-3">
+                  <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-white/[0.06] animate-pulse" />
+                      <div className="h-4 w-16 bg-white/[0.06] rounded-lg animate-pulse" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[0,1,2].map(i => <div key={i} className="h-16 bg-white/[0.06] rounded-xl animate-pulse" />)}
+                    </div>
+                    <div className="h-2 bg-white/[0.06] rounded-full animate-pulse" />
+                    <div className="flex gap-1">
+                      {[0,1,2,3,4,5,6,7,8,9].map(i => <div key={i} className="w-5 h-5 rounded-full bg-white/[0.06] animate-pulse" />)}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {[0,1].map(i => (
+                      <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-white/[0.06] animate-pulse" />
+                          <div className="h-4 w-16 bg-white/[0.06] rounded-lg animate-pulse" />
+                        </div>
+                        {[0,1,2].map(j => (
+                          <div key={j} className="flex justify-between items-center">
+                            <div className="h-3 w-16 bg-white/[0.06] rounded-lg animate-pulse" />
+                            <div className="h-3 w-12 bg-white/[0.06] rounded-lg animate-pulse" />
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ) : (
                 <>
                   {/* Estadísticas */}
                   <div className="flex flex-col gap-2">
                     <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest px-1">Estadísticas</p>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
                       {/* Truco */}
-                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">🃏</span>
-                          <p className="text-sm font-bold text-white">Truco</p>
+                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3 sm:col-span-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-7 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 text-purple-200 text-[10px] font-extrabold flex items-center justify-center flex-shrink-0">TR</span>
+                            <p className="text-sm font-bold text-white">Truco</p>
+                          </div>
+                          {stats?.truco.ultimaPartida && (
+                            <span className="text-[10px] text-gray-600">{timeAgo(stats.truco.ultimaPartida)}</span>
+                          )}
                         </div>
                         {stats?.truco.partidas > 0 ? (
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex justify-between text-xs">
-                              <span className="text-gray-500">Partidas</span>
-                              <span className="text-white font-semibold tabular-nums">{stats.truco.partidas}</span>
+                          <div className="flex flex-col gap-3">
+                            {/* Top row: winrate + streak */}
+                            <div className="grid grid-cols-3 gap-3">
+                              <div className="bg-white/[0.03] rounded-xl p-3 flex flex-col items-center gap-1">
+                                <span className="text-white font-extrabold text-xl tabular-nums">{stats.truco.partidas}</span>
+                                <span className="text-gray-600 text-[10px]">partidas</span>
+                              </div>
+                              <div className="bg-white/[0.03] rounded-xl p-3 flex flex-col items-center gap-1">
+                                <span className="text-purple-400 font-extrabold text-xl tabular-nums">
+                                  {Math.round(stats.truco.victorias / stats.truco.partidas * 100)}%
+                                </span>
+                                <span className="text-gray-600 text-[10px]">winrate</span>
+                              </div>
+                              <div className="bg-white/[0.03] rounded-xl p-3 flex flex-col items-center gap-1">
+                                <span className={`font-extrabold text-xl tabular-nums ${stats.truco.racha > 0 ? 'text-green-400' : stats.truco.racha < 0 ? 'text-red-400' : 'text-gray-500'}`}>
+                                  {stats.truco.racha > 0 ? `+${stats.truco.racha}` : stats.truco.racha === 0 ? '—' : stats.truco.racha}
+                                </span>
+                                <span className="text-gray-600 text-[10px]">racha</span>
+                              </div>
                             </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-gray-500">Victorias</span>
-                              <span className="text-green-400 font-semibold tabular-nums">{stats.truco.victorias}</span>
+
+                            {/* Win/loss stacked bar */}
+                            <div>
+                              <div className="flex justify-between text-[10px] text-gray-600 mb-1.5">
+                                <span className="text-green-500">{stats.truco.victorias}V</span>
+                                <span className="text-red-500">{stats.truco.derrotas}D</span>
+                              </div>
+                              <div className="flex h-2 rounded-full overflow-hidden gap-px bg-white/[0.04]">
+                                {stats.truco.victorias > 0 && (
+                                  <div className="bg-green-500/70 rounded-l-full transition-all" style={{ width: `${Math.round(stats.truco.victorias / stats.truco.partidas * 100)}%` }} />
+                                )}
+                                {stats.truco.derrotas > 0 && (
+                                  <div className="bg-red-500/50 rounded-r-full flex-1" />
+                                )}
+                              </div>
                             </div>
-                            <div className="flex justify-between text-xs">
-                              <span className="text-gray-500">Winrate</span>
-                              <span className="text-purple-400 font-semibold tabular-nums">
-                                {stats.truco.partidas > 0 ? Math.round(stats.truco.victorias / stats.truco.partidas * 100) : 0}%
-                              </span>
-                            </div>
-                            <div className="w-full bg-white/[0.06] rounded-full h-1 mt-1 overflow-hidden">
-                              <div className="h-full bg-purple-500 rounded-full" style={{ width: `${stats.truco.partidas > 0 ? Math.round(stats.truco.victorias / stats.truco.partidas * 100) : 0}%` }} />
-                            </div>
+
+                            {/* Recent history dots */}
+                            {stats.truco.historialReciente.length > 0 && (
+                              <div>
+                                <p className="text-[10px] text-gray-600 mb-1.5">Últimas {stats.truco.historialReciente.length} partidas</p>
+                                <div className="flex gap-1 flex-wrap">
+                                  {stats.truco.historialReciente.map((res, i) => (
+                                    <span
+                                      key={i}
+                                      title={res === 'victoria' ? 'Victoria' : 'Derrota'}
+                                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold flex-shrink-0 ${
+                                        res === 'victoria'
+                                          ? 'bg-green-500/20 border border-green-500/40 text-green-400'
+                                          : 'bg-red-500/20 border border-red-500/30 text-red-400'
+                                      }`}
+                                    >
+                                      {res === 'victoria' ? 'V' : 'D'}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <p className="text-gray-600 text-xs italic">Sin partidas aún</p>
@@ -285,9 +427,14 @@ export default function Perfil() {
 
                       {/* Sudoku */}
                       <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">🔢</span>
-                          <p className="text-sm font-bold text-white">Sudoku</p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-7 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 text-purple-200 text-[10px] font-extrabold flex items-center justify-center flex-shrink-0">SU</span>
+                            <p className="text-sm font-bold text-white">Sudoku</p>
+                          </div>
+                          {stats?.sudoku.ultimaPartida && (
+                            <span className="text-[10px] text-gray-600">{timeAgo(stats.sudoku.ultimaPartida)}</span>
+                          )}
                         </div>
                         {stats?.sudoku.partidas > 0 ? (
                           <div className="flex flex-col gap-1.5">
@@ -315,9 +462,14 @@ export default function Perfil() {
 
                       {/* Buscaminas */}
                       <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">💣</span>
-                          <p className="text-sm font-bold text-white">Buscaminas</p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="w-7 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 text-purple-200 text-[10px] font-extrabold flex items-center justify-center flex-shrink-0">BU</span>
+                            <p className="text-sm font-bold text-white">Buscaminas</p>
+                          </div>
+                          {stats?.buscaminas.ultimaPartida && (
+                            <span className="text-[10px] text-gray-600">{timeAgo(stats.buscaminas.ultimaPartida)}</span>
+                          )}
                         </div>
                         {stats?.buscaminas.partidas > 0 ? (
                           <div className="flex flex-col gap-1.5">
@@ -344,6 +496,34 @@ export default function Perfil() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Rivales frecuentes */}
+                  {historialRivales.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest px-1">Rivales frecuentes</p>
+                      <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden">
+                        {historialRivales.map((rival, i) => (
+                          <div key={rival.uid} className={`flex items-center gap-3 px-4 py-3 ${i < historialRivales.length - 1 ? 'border-b border-white/[0.05]' : ''}`}>
+                            <div className="w-8 h-8 rounded-full bg-purple-900/40 border border-purple-700/25 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              {rival.photo
+                                ? <img src={rival.photo} alt="" className="w-full h-full object-cover" />
+                                : <span className="text-purple-200 text-xs font-bold">{(rival.nombre || 'R').slice(0, 2).toUpperCase()}</span>
+                              }
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-xs font-semibold truncate">{rival.nombre}</p>
+                              <p className="text-gray-600 text-[10px] mt-0.5">{timeAgo(rival.ultimaFecha)}</p>
+                            </div>
+                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                              <span className="text-green-400 text-xs font-bold tabular-nums">{rival.victorias}V</span>
+                              <span className="text-gray-700 text-[10px]">·</span>
+                              <span className="text-red-400 text-xs font-bold tabular-nums">{rival.derrotas}D</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Favoritos */}
                   <div className="flex flex-col gap-2">
@@ -472,16 +652,18 @@ export default function Perfil() {
   )
 }
 
-function HistorialRow({ entry }) {
-  const ICONS = { truco: '🃏', sudoku: '🔢', buscaminas: '💣' }
-  const NOMBRES = { truco: 'Truco', sudoku: 'Sudoku', buscaminas: 'Buscaminas' }
+const HIST_ABBR = { truco: 'TR', sudoku: 'SU', buscaminas: 'BU' }
+const HIST_NOMBRES = { truco: 'Truco', sudoku: 'Sudoku', buscaminas: 'Buscaminas' }
 
+function HistorialRow({ entry }) {
   return (
     <div className="flex items-center gap-3 bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-2.5">
-      <span className="text-base w-6 text-center flex-shrink-0">{ICONS[entry.tipo] || '🎮'}</span>
+      <span className="w-6 h-6 rounded-full bg-purple-600/20 border border-purple-500/30 text-purple-200 text-[9px] font-extrabold flex items-center justify-center flex-shrink-0">
+        {HIST_ABBR[entry.tipo] || 'PL'}
+      </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-white text-xs font-semibold">{NOMBRES[entry.tipo] || entry.tipo}</span>
+          <span className="text-white text-xs font-semibold">{HIST_NOMBRES[entry.tipo] || entry.tipo}</span>
           {entry.dificultad && (
             <span className={`text-[10px] font-semibold ${DIFF_COLOR[entry.dificultad] || 'text-gray-400'}`}>
               {DIFF_LABEL[entry.dificultad] || entry.dificultad}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 import { db } from '../firebase'
 import { useAuth } from '../context/AuthContext'
@@ -100,6 +101,7 @@ function Cell({ letter, state }) {
 }
 
 export default function AdivinaPalabra() {
+  usePageTitle('Adivina la Palabra')
   const { usuario } = useAuth()
   const answer = useMemo(() => dailyWord(), [])
   const [guesses, setGuesses] = useState([])

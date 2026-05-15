@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -185,6 +186,7 @@ function DragGhost({ cards, sz, x, y, offX, offY }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Solitario() {
+  usePageTitle('Solitario')
   const sz = useCardSize()
   const [game, setGame]       = useState(() => deal())
   const [sel, setSel]         = useState(null)
@@ -563,7 +565,11 @@ export default function Solitario() {
       {won && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm px-4">
           <div className="bg-[#0d0d1a] border border-white/[0.09] rounded-3xl p-10 max-w-sm w-full text-center flex flex-col gap-6 shadow-2xl">
-            <span className="text-7xl">🏆</span>
+            <div className="w-20 h-20 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10 text-yellow-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0"/>
+              </svg>
+            </div>
             <div>
               <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-400">¡Ganaste!</h2>
               <p className="text-gray-500 mt-1.5">Completaste el solitario</p>

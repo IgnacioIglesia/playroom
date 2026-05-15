@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { io } from 'socket.io-client'
 import Navbar from '../../components/Navbar'
+import { usePageTitle } from '../../hooks/usePageTitle'
 import Footer from '../../components/Footer'
 import { DELAY_MANO } from './constantes'
 import { useAuth } from '../../context/AuthContext'
@@ -9,8 +10,9 @@ import MesaTruco from './MesaTruco'
 import MesaTruco2v2 from './MesaTruco2v2'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { db } from '../../firebase'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, doc, getDoc, setDoc } from 'firebase/firestore'
 import { SOCKET_URL } from '../../config/socket'
+import { useTurnNotification, requestTurnNotificationPermission } from '../../hooks/useTurnNotification'
 
 const normalizarCodigoTruco = (codigo = '') =>
   codigo.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4)
@@ -20,10 +22,12 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
   const autoJoinedRef  = useRef(false)
 
   const [pantalla, setPantalla]       = useState('lobby')
+  const [salasPublicas, setSalasPublicas] = useState([])
   const [codigoSala, setCodigoSala]   = useState('')
   const [inputCodigo, setInputCodigo] = useState('')
   const [error, setError]             = useState('')
   const [errorConexion, setErrorConexion] = useState('')
+  const [servidorDurmiendo, setServidorDurmiendo] = useState(false)
   const [limite, setLimite]           = useState(30)
   const [conectado, setConectado]     = useState(false)
   const [modalCrearAbierto, setModalCrearAbierto] = useState(false)
@@ -93,6 +97,8 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
   const [florCantadaPor, setFlorCantadaPor] = useState(null)
   const [nivelFlor, setNivelFlor]           = useState(null)
 
+  const [salaError, setSalaError]     = useState('')
+  const [rivalReconectando, setRivalReconectando] = useState(false)
   const [copied, setCopied]           = useState(false)
   const [copiedLink, setCopiedLink]   = useState(false)
   const [rondaTerminada, setRondaTerminada] = useState(false)
@@ -108,6 +114,10 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
   const manoJRef           = useRef([])
   const partner2v2Ref      = useRef(null)
   const rivals2v2Ref       = useRef([])
+  const rivalInfoRef       = useRef({ userId: null, nombre: 'Rival', photoURL: '' })
+  const rivalEloRef        = useRef(1000)
+  const [eloDelta, setEloDelta] = useState(null)
+  usePageTitle('Truco Online')
   const navigate           = useNavigate()
   const location           = useLocation()
   const { setGuard, clearGuard } = useNavigationGuard()
@@ -143,6 +153,19 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
     return () => clearGuard()
   }, [pantalla])
 
+  useEffect(() => {
+    if (!conectado || pantalla !== 'lobby') return
+    const fetchSalas = async () => {
+      try {
+        const r = await fetch(`${SOCKET_URL}/salas`)
+        if (r.ok) setSalasPublicas(await r.json())
+      } catch {}
+    }
+    fetchSalas()
+    const interval = setInterval(fetchSalas, 5000)
+    return () => clearInterval(interval)
+  }, [conectado, pantalla])
+
   // Detect new mano result → brief mostrandoMano UI state
   // Reset counter when new round starts (resultados resets to [])
   useEffect(() => {
@@ -166,15 +189,36 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
 
   const guardarPartida = async (ganadorFinal, pjFinal, pmFinal) => {
     if (!usuario) return
+    const resultado = ganadorFinal === 'yo' ? 'victoria' : 'derrota'
     try {
       await addDoc(collection(db, 'ranking_truco'), {
         uid: usuario.uid,
         nombre: usuario.displayName || usuario.email?.split('@')[0] || 'Jugador',
-        resultado: ganadorFinal === 'yo' ? 'victoria' : 'derrota',
-        puntosVos: pjFinal, puntosRival: pmFinal,
+        resultado, puntosVos: pjFinal, puntosRival: pmFinal,
         fecha: serverTimestamp()
       })
-    } catch (e) { console.error('Error guardando partida:', e) }
+    } catch (e) { console.error('Error guardando ranking:', e) }
+    try {
+      const rival = rivalInfoRef.current
+      await addDoc(collection(db, 'users', usuario.uid, 'historial'), {
+        rival_uid: rival.userId || null,
+        rival_nombre: rival.nombre,
+        rival_photo: rival.photoURL || '',
+        resultado, pts_yo: pjFinal, pts_rival: pmFinal,
+        juego: 'truco', fecha: serverTimestamp()
+      })
+    } catch (e) { console.error('Error guardando historial:', e) }
+    try {
+      const snap = await getDoc(doc(db, 'users', usuario.uid))
+      const miElo = snap.exists() ? (snap.data().elo ?? 1000) : 1000
+      const suElo = rivalEloRef.current
+      const K = 32
+      const expected = 1 / (1 + Math.pow(10, (suElo - miElo) / 400))
+      const delta = Math.round(K * ((resultado === 'victoria' ? 1 : 0) - expected))
+      const nuevoElo = Math.max(100, miElo + delta)
+      await setDoc(doc(db, 'users', usuario.uid), { elo: nuevoElo, updatedAt: serverTimestamp() }, { merge: true })
+      setEloDelta({ delta, nuevoElo })
+    } catch (e) { console.error('Error actualizando ELO:', e) }
   }
 
   const aplicarEstado = (estado) => {
@@ -277,14 +321,20 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
     const socket = io(SOCKET_URL, { forceNew: true })
     sockRef.current = socket
 
+    const coldStartTimer = setTimeout(() => {
+      if (!socket.connected) setServidorDurmiendo(true)
+    }, 5000)
+
     socket.on('connect', () => {
+      clearTimeout(coldStartTimer)
       setConectado(true)
+      setServidorDurmiendo(false)
       setErrorConexion('')
     })
     socket.on('disconnect', () => setConectado(false))
     socket.on('connect_error', () => {
       setConectado(false)
-      setErrorConexion('No se pudo conectar al servidor online. Revisá que el backend de Render esté activo.')
+      setErrorConexion('No se pudo conectar al servidor online. Revisá tu conexión e intentá de nuevo.')
     })
 
     socket.on('sala_creada', ({ salaId }) => {
@@ -292,9 +342,17 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
       setPantalla('esperando')
     })
 
-    socket.on('error_sala', msg => setError(msg))
+    socket.on('error_sala', msg => {
+      if (autoJoinedRef.current) {
+        setSalaError(msg)
+        setPantalla('sala-error')
+      } else {
+        setError(msg)
+      }
+    })
 
     socket.on('juego_iniciado', ({ jugadorA, limite: limiteRecibido, jugadorAInfo, jugadorBInfo, modalidad: modSala }) => {
+      requestTurnNotificationPermission()
       if (modalidadFijada && modSala && modSala !== modalidadFijada) {
         setError(`Esta sala es ${modSala}. Buscá un código de modalidad ${modalidadFijada}.`)
         sockRef.current?.emit('salir_sala')
@@ -310,7 +368,14 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
         setInicialesRival((infoRival.nombre || 'Rival').slice(0, 2).toUpperCase())
         setRivalPhotoURL(infoRival.photoURL || '')
         setRivalUserId(infoRival.userId || null)
+        rivalInfoRef.current = { userId: infoRival.userId || null, nombre: infoRival.nombre || 'Rival', photoURL: infoRival.photoURL || '' }
+        if (infoRival.userId && infoRival.userId.length > 20) {
+          getDoc(doc(db, 'users', infoRival.userId))
+            .then(snap => { rivalEloRef.current = snap.exists() ? (snap.data().elo ?? 1000) : 1000 })
+            .catch(() => {})
+        }
       }
+      setEloDelta(null)
       setPtsJ(0); setPtsM(0); setGanador(null); setLog([])
       prevResultadosLen.current = 0
       setPantalla('juego')
@@ -343,6 +408,7 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
     })
 
     socket.on('juego_iniciado_2v2', ({ limite: limiteRecibido }) => {
+      requestTurnNotificationPermission()
       if (limiteRecibido) setLimite(limiteRecibido)
       setModalidad('2v2')
       setPtsJ(0); setPtsM(0); setGanador(null); setLog([])
@@ -366,9 +432,27 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
       }
     })
 
-    socket.on('rival_desconectado', () => {
-      setError('El rival se desconectó')
+    socket.on('rival_reconectando', ({ nombre }) => {
+      setRivalReconectando(true)
+      addLog([`${nombre} se desconectó — esperando reconexión...`])
+    })
+
+    socket.on('rival_reconectado', ({ nombre }) => {
+      setRivalReconectando(false)
+      addLog([`${nombre} reconectó — continúa la partida`])
+    })
+
+    socket.on('rival_desconectado', ({ nombre } = {}) => {
+      setRivalReconectando(false)
+      setError(`${nombre || 'El rival'} se desconectó`)
       setPantalla('lobby')
+    })
+
+    socket.on('reconectado_a_partida', ({ salaId: sid, modalidad: mod }) => {
+      setCodigoSala(sid)
+      setModalidad(mod || '1vs1')
+      setPantalla('juego')
+      addLog(['Reconectado — continuando la partida'])
     })
 
     socket.on('conexion_duplicada', (mensaje) => {
@@ -419,6 +503,8 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
   const cantarFlor        = nivel => emit(nivel)
   const responderFlorQuiero   = () => emit('quiero_flor')
   const responderFlorNoQuiero = () => emit('no_quiero_flor')
+  const irseMazo = () => emit('irse_al_mazo')
+
   const enviarMensaje = texto => {
     addLog([`💬 Vos: ${texto}`])
     setGloboYo(texto)
@@ -429,6 +515,8 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
   const resultadoUltimaMano = resultados[resultados.length - 1]
   const bloqueado           = rondaTerminada || mostrandoMano || esperandoRespuesta || trucoPendiente || envidoPendiente
   const puedeJugar          = turno === 'yo' && !bloqueado && florResuelta
+
+  useTurnNotification(pantalla === 'juego' && puedeJugar)
   const puedeEnvido         = !envidoResuelto && !florJ && !florM && florResuelta && manoActual === 0 && !primeraJugada && !bloqueado
   const puedeTruco          = !trucoResuelto && florResuelta && !mostrandoMano && !esperandoRespuesta
   const puedeIniciarTruco   = puedeTruco && !trucoCantado && !trucoPendiente && turno === 'yo'
@@ -546,6 +634,16 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
                 <p className="text-3xl font-extrabold text-red-400">{ptsM}</p>
               </div>
             </div>
+
+            {eloDelta && (
+              <div className={`flex items-center justify-center gap-2 rounded-2xl px-4 py-3 border ${eloDelta.delta >= 0 ? 'bg-green-950/40 border-green-700/30' : 'bg-red-950/40 border-red-700/30'}`}>
+                <span className="text-gray-500 text-xs uppercase tracking-wider">ELO</span>
+                <span className={`font-extrabold text-lg tabular-nums ${eloDelta.delta >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {eloDelta.delta >= 0 ? '+' : ''}{eloDelta.delta}
+                </span>
+                <span className="text-gray-600 text-xs">→ {eloDelta.nuevoElo}</span>
+              </div>
+            )}
 
             <button
               onClick={() => setPantalla('lobby')}
@@ -696,6 +794,56 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
     )
   }
 
+  // ── SALA ERROR (link expirado / sala llena) ──
+  if (pantalla === 'sala-error') return (
+    <div className="min-h-screen bg-[#07070f] text-white flex flex-col">
+      <Navbar />
+      <div className="relative flex-1 flex items-center justify-center px-4 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(220,38,38,0.12),transparent)]" />
+        <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(rgba(139,92,246,0.04) 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+
+        <div className="relative z-10 bg-white/[0.03] border border-white/[0.07] rounded-3xl p-10 max-w-sm w-full text-center flex flex-col gap-6 backdrop-blur-sm">
+          <div className="flex justify-center">
+            <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-10 h-10 text-red-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/>
+              </svg>
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-extrabold text-white">Sala no disponible</h2>
+            <p className="text-gray-500 text-sm mt-2">
+              {salaError.includes('llena') ? 'La sala está llena — no hay lugar disponible.' :
+               salaError.includes('comenzó') ? 'La partida ya comenzó — llegaste tarde.' :
+               'El link de invitación venció o la sala no existe.'}
+            </p>
+            {codigoAuto && (
+              <p className="text-gray-700 text-xs mt-2 font-mono">Código: {codigoAuto.toUpperCase()}</p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => { setSalaError(''); autoJoinedRef.current = false; setPantalla('lobby'); setModalCrearAbierto(true) }}
+              disabled={!conectado}
+              className="bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white py-3 rounded-2xl font-bold transition-all hover:shadow-[0_0_24px_rgba(139,92,246,0.3)] text-sm"
+            >
+              Crear mi propia sala →
+            </button>
+            <button
+              onClick={() => { setSalaError(''); autoJoinedRef.current = false; setPantalla('lobby') }}
+              className="bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.07] hover:border-white/[0.12] text-gray-300 py-3 rounded-2xl font-semibold transition text-sm"
+            >
+              Ir al lobby
+            </button>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  )
+
   // ── LOBBY ──
   if (pantalla === 'lobby') {
     const modoLabel = modalidadFijada === '2vs2' ? '2 vs 2' : '1 vs 1'
@@ -725,6 +873,12 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
           {error && (
             <div className="bg-red-950/60 border border-red-700/40 text-red-400 text-sm px-4 py-3 rounded-2xl text-center">
               {error}
+            </div>
+          )}
+          {servidorDurmiendo && !conectado && (
+            <div className="bg-amber-950/60 border border-amber-700/40 text-amber-200 text-sm px-4 py-3 rounded-2xl text-center flex flex-col gap-1">
+              <span className="font-semibold">Activando el servidor...</span>
+              <span className="text-amber-400/70 text-xs">El servidor estuvo inactivo y puede tardar hasta 30 segundos en despertar. Aguantá un momento.</span>
             </div>
           )}
           {errorConexion && (
@@ -823,6 +977,38 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
                 <div className="flex-1 h-px bg-white/[0.05]" />
               </div>
 
+              {/* Salas abiertas */}
+              {(() => {
+                const maxJ = modalidadFijada === '2vs2' ? 4 : 2
+                const abiertas = salasPublicas.filter(
+                  s => s.estado === 'esperando' && s.modalidad === (modalidadFijada || '1vs1') && s.jugadores.length < maxJ
+                )
+                if (abiertas.length === 0) return null
+                return (
+                  <div className="bg-white/[0.03] border border-white/[0.07] rounded-2xl overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-white/[0.06] flex items-center justify-between">
+                      <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Salas abiertas</p>
+                      <span className="text-[10px] text-gray-600">{abiertas.length} disponible{abiertas.length !== 1 ? 's' : ''}</span>
+                    </div>
+                    {abiertas.map(sala => (
+                      <button key={sala.id}
+                        onClick={() => { setError(''); sockRef.current?.emit('unirse_sala', { salaId: sala.id }) }}
+                        disabled={!conectado}
+                        className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/[0.04] border-b last:border-b-0 border-white/[0.05] transition text-left disabled:opacity-40">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-white text-sm tracking-widest">{sala.id}</span>
+                            <span className="text-gray-500 text-xs truncate">· {sala.jugadores[0]}</span>
+                          </div>
+                          <p className="text-gray-600 text-[10px] mt-0.5">{sala.jugadores.length}/{maxJ} jugador{sala.jugadores.length !== 1 ? 'es' : ''}</p>
+                        </div>
+                        <span className="text-purple-400 text-xs font-bold flex-shrink-0">Unirse →</span>
+                      </button>
+                    ))}
+                  </div>
+                )
+              })()}
+
               {/* Unirse */}
               <div className="bg-white/[0.03] border border-white/[0.07] hover:border-white/[0.12] rounded-2xl p-5 flex flex-col gap-4 transition-colors">
                 <div className="flex items-center gap-3">
@@ -878,6 +1064,20 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
   return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col">
       <Navbar />
+      {!conectado && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-[#0d0b1a] border border-white/10 rounded-2xl px-8 py-6 text-center flex flex-col gap-3 max-w-xs">
+            <div className="flex justify-center">
+              <span className="relative flex w-4 h-4">
+                <span className="animate-ping absolute inset-0 rounded-full bg-amber-500 opacity-60" />
+                <span className="relative rounded-full w-4 h-4 bg-amber-500" />
+              </span>
+            </div>
+            <p className="text-white font-bold">Reconectando...</p>
+            <p className="text-gray-400 text-sm">Perdiste la conexión. Esperá un momento.</p>
+          </div>
+        </div>
+      )}
       {modalidad === '2v2' ? (
         <MesaTruco2v2
           miMano={manoJ} miCartasJugadas={cjJ} muestra={muestra}
@@ -951,6 +1151,8 @@ export default function TrucoOnline({ modalidadFijada = null, codigoAuto = null 
           globoYo={globoYo} globoRival={globoRival}
           onEnviarMensaje={enviarMensaje}
           onSubirEnvidoConNivel={(nivel) => { setEnvidoPendiente(false); cantarEnvido(nivel) }}
+          onIrseMazo={irseMazo}
+          rivalReconectando={rivalReconectando}
         />
       )}
       <Footer />

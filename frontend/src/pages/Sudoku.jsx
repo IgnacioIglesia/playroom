@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import { useNavigationGuard } from '../context/NavigationGuardContext'
@@ -201,6 +202,7 @@ function NotaCelda({ numero, activo, resaltado }) {
 }
 
 export default function Sudoku() {
+  usePageTitle('Sudoku')
   const { usuario } = useAuth()
   const { setGuard, clearGuard } = useNavigationGuard()
   const [pantalla, setPantalla] = useState('menu')
@@ -221,6 +223,12 @@ export default function Sudoku() {
   const [puntuacion, setPuntuacion] = useState(0)
   const [guardadoRanking, setGuardadoRanking] = useState(false)
   const [ranking, setRanking] = useState([])
+  const [partidaGuardada, setPartidaGuardada] = useState(() => {
+    try {
+      const s = localStorage.getItem('playroom_sudoku_save')
+      return s ? JSON.parse(s) : null
+    } catch { return null }
+  })
 
   const boardRef = useRef(null)
 
@@ -241,6 +249,17 @@ export default function Sudoku() {
   useEffect(() => {
     if (pantalla === 'menu') cargarRanking()
   }, [pantalla])
+
+  useEffect(() => {
+    if (!tablero || completado || pantalla !== 'juego') return
+    try {
+      localStorage.setItem('playroom_sudoku_save', JSON.stringify({
+        tablero, tableroInicial, solucion,
+        notas: notas?.map(f => f.map(c => [...c])) ?? null,
+        errores, tiempo, dificultad, celdasRestantes,
+      }))
+    } catch {}
+  }, [tablero, notas, errores, tiempo])
 
   // Manejar input del teclado físico
   useEffect(() => {
@@ -315,7 +334,29 @@ export default function Sudoku() {
     } catch { /* sin conexión o sin permiso */ }
   }
 
+  const continuarPartida = () => {
+    const s = partidaGuardada
+    if (!s) return
+    setTablero(s.tablero)
+    setSolucion(s.solucion)
+    setTableroInicial(s.tableroInicial)
+    setNotas(s.notas ? s.notas.map(f => f.map(c => new Set(c))) : Array(9).fill(null).map(() => Array(9).fill(null).map(() => new Set())))
+    setErrores(s.errores || 0)
+    setTiempo(s.tiempo || 0)
+    setDificultad(s.dificultad)
+    setCeldasRestantes(s.celdasRestantes || 0)
+    setCeldaSeleccionada(null)
+    setModoNotas(false)
+    setCompletado(false)
+    setPuntuacion(0)
+    setGuardadoRanking(false)
+    setPausado(false)
+    setPantalla('juego')
+  }
+
   const iniciarJuego = (diff) => {
+    localStorage.removeItem('playroom_sudoku_save')
+    setPartidaGuardada(null)
     const { tablero: nuevoTablero, solucion: nuevaSolucion } = generarSudoku(diff)
     setTablero(nuevoTablero)
     setSolucion(nuevaSolucion)
@@ -391,6 +432,8 @@ export default function Sudoku() {
       
       if (nuevosErrores >= MAX_ERRORES) {
         setCompletado(true)
+        localStorage.removeItem('playroom_sudoku_save')
+        setPartidaGuardada(null)
         setTimeout(() => setPantalla('resultado'), 600)
         return
       }
@@ -440,6 +483,8 @@ export default function Sudoku() {
     
     if (contarCeldasVacias(nuevoTablero) === 0) {
       setCompletado(true)
+      localStorage.removeItem('playroom_sudoku_save')
+      setPartidaGuardada(null)
       setCeldaSeleccionada(null)
       const pts = calcularPuntuacion(dificultad, tiempo, errores)
       setPuntuacion(pts)
@@ -623,6 +668,21 @@ export default function Sudoku() {
                 <p className="text-gray-500 mt-1 text-sm">El clásico juego de números · {MAX_ERRORES} errores para perder</p>
               </div>
             </div>
+
+            {partidaGuardada && (
+              <div className="bg-white/[0.03] border border-purple-700/25 rounded-3xl p-5 flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-white font-semibold text-sm">Partida guardada</p>
+                  <p className="text-gray-500 text-xs mt-0.5">
+                    {DIFICULTADES[partidaGuardada.dificultad]?.label} · {formatearTiempo(partidaGuardada.tiempo)} · {partidaGuardada.errores}/{MAX_ERRORES} errores
+                  </p>
+                </div>
+                <button onClick={continuarPartida}
+                  className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-sm font-bold transition flex-shrink-0">
+                  Continuar →
+                </button>
+              </div>
+            )}
 
             <div className="bg-white/[0.03] border border-white/[0.07] rounded-3xl p-6">
               <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest mb-4">Seleccioná la dificultad</p>

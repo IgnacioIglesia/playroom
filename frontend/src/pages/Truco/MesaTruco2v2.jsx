@@ -59,8 +59,9 @@ function CartasPartner({ partner, muestra }) {
           </div>
         )}
       </div>
-      <span className="text-green-400 text-xs font-semibold truncate max-w-[120px]">
-        {partner?.nombre || 'Partner'} {partner?.tieneFlorPiece ? '🌸' : ''}
+      <span className="text-green-400 text-xs font-semibold truncate max-w-[120px] flex items-center gap-1">
+        {partner?.nombre || 'Partner'}
+        {partner?.tieneFlorPiece ? <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-yellow-500/20 border border-yellow-400/40 text-yellow-300 text-[8px] font-black">F</span> : null}
       </span>
     </div>
   )
@@ -119,10 +120,10 @@ export default function MesaTruco2v2({
 
   const esMiTurno = turno === 'yo'
 
-  const turnoLabel = esMiTurno ? '🎯 Tu turno'
-    : turno === 'partner' ? `⏳ Turno de ${partner?.nombre || 'Partner'}`
-    : turnoNombre ? `⏳ Turno de ${turnoNombre}`
-    : '⏳ Turno rival'
+  const turnoLabel = esMiTurno ? 'Tu turno'
+    : turno === 'partner' ? `Turno de ${partner?.nombre || 'Partner'}`
+    : turnoNombre ? `Turno de ${turnoNombre}`
+    : 'Turno rival'
 
   const resultadoUltimaMano = resultados?.[resultados.length - 1]
 
@@ -168,12 +169,12 @@ export default function MesaTruco2v2({
             {florEquipoActiva && rivalEquipoTieneFlor ? (
               <>
                 <p className="text-xs text-yellow-400 font-bold uppercase tracking-wider text-center">Flor</p>
-                <BtnCanto onClick={() => cantarFlor('flor')} color="yellow">🌸 La mía es Flor</BtnCanto>
+                <BtnCanto onClick={() => cantarFlor('flor')} color="yellow">La mía es Flor</BtnCanto>
                 <BtnCanto onClick={() => cantarFlor('conFlor')} color="yellow">Con Flor Envido</BtnCanto>
                 <BtnCanto onClick={() => cantarFlor('contraFlor')} color="yellow">Contra Flor al Resto</BtnCanto>
               </>
             ) : (
-              <p className="text-xs text-yellow-400 font-bold text-center">🌸 Hay Flor en juego</p>
+              <p className="text-xs text-yellow-400 font-bold text-center">Hay Flor en juego</p>
             )}
           </div>
         )}
@@ -279,13 +280,13 @@ export default function MesaTruco2v2({
                 : 'bg-black/40 border-white/10 text-gray-400'
               }`}>
                 {mostrandoMano
-                  ? resultadoUltimaMano === 'jugador' ? '✅ Ganaron'
-                  : resultadoUltimaMano === 'maquina' ? '❌ Perdieron'
-                  : '🤝 Empate'
-                : trucoPendiente  ? '🗣 Respondé truco'
-                : envidoPendiente ? '🗣 Respondé envido'
-                : florPendiente   ? '🌸 Respondé flor'
-                : !florResuelta   ? '🌸 Resolvé Flor'
+                  ? resultadoUltimaMano === 'jugador' ? 'Ganaron la mano'
+                  : resultadoUltimaMano === 'maquina' ? 'Perdieron la mano'
+                  : 'Mano empatada'
+                : trucoPendiente  ? 'Respondé truco'
+                : envidoPendiente ? 'Respondé envido'
+                : florPendiente   ? 'Respondé flor'
+                : !florResuelta   ? 'Resolvé la Flor'
                 : turnoLabel}
               </span>
             </div>
@@ -307,7 +308,7 @@ export default function MesaTruco2v2({
                 }
                 <button onClick={() => setPopupPartner(v => !v)}
                   className="text-green-400 text-[10px] font-semibold truncate max-w-[80px] text-center cursor-pointer hover:text-green-300 transition-colors focus:outline-none">
-                  {partner?.nombre?.split(' ')[0] || 'Partner'}{partner?.tieneFlorPiece ? ' 🌸' : ''}
+                  {partner?.nombre?.split(' ')[0] || 'Partner'}{partner?.tieneFlorPiece ? <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-yellow-500/20 border border-yellow-400/40 text-yellow-300 text-[8px] font-black ml-1">F</span> : null}
                 </button>
                 {popupPartner && (
                   <PlayerPopup userId={partner?.userId} nombre={partner?.nombre} photoURL={partner?.photoURL}
@@ -323,9 +324,9 @@ export default function MesaTruco2v2({
                 }
                 <button onClick={() => setPopupR1(v => !v)}
                   className="text-red-400 text-[10px] font-semibold truncate max-w-[80px] text-center cursor-pointer hover:text-red-300 transition-colors focus:outline-none">
-                  {rival1?.nombre?.split(' ')[0] || 'Rival 1'}{rival1?.tieneFlorPiece ? ' 🌸' : ''}
+                  {rival1?.nombre?.split(' ')[0] || 'Rival 1'}{rival1?.tieneFlorPiece ? <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-yellow-500/20 border border-yellow-400/40 text-yellow-300 text-[8px] font-black ml-1">F</span> : null}
                 </button>
-                <span className="text-gray-600 text-[9px]">🂠 {rival1?.manoRestante ?? 0}</span>
+                <span className="text-gray-600 text-[9px] flex items-center gap-0.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-2.5 h-2.5 inline"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>{rival1?.manoRestante ?? 0}</span>
                 {globoRival1 && (
                   <div className="absolute top-0 left-full ml-2 bg-gray-700 border border-gray-500 text-white text-[10px] px-2.5 py-1 rounded-xl shadow-lg max-w-[140px] z-30 whitespace-nowrap">
                     {globoRival1}
@@ -346,9 +347,9 @@ export default function MesaTruco2v2({
                 }
                 <button onClick={() => setPopupR2(v => !v)}
                   className="text-red-400 text-[10px] font-semibold truncate max-w-[80px] text-center cursor-pointer hover:text-red-300 transition-colors focus:outline-none">
-                  {rival2?.nombre?.split(' ')[0] || 'Rival 2'}{rival2?.tieneFlorPiece ? ' 🌸' : ''}
+                  {rival2?.nombre?.split(' ')[0] || 'Rival 2'}{rival2?.tieneFlorPiece ? <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-yellow-500/20 border border-yellow-400/40 text-yellow-300 text-[8px] font-black ml-1">F</span> : null}
                 </button>
-                <span className="text-gray-600 text-[9px]">🂠 {rival2?.manoRestante ?? 0}</span>
+                <span className="text-gray-600 text-[9px] flex items-center gap-0.5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-2.5 h-2.5 inline"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>{rival2?.manoRestante ?? 0}</span>
                 {globoRival2 && (
                   <div className="absolute top-0 right-full mr-2 bg-gray-700 border border-gray-500 text-white text-[10px] px-2.5 py-1 rounded-xl shadow-lg max-w-[140px] z-30 whitespace-nowrap">
                     {globoRival2}
@@ -375,7 +376,7 @@ export default function MesaTruco2v2({
             {trucoCantado && (
               <div className="px-3 pb-2 flex justify-center">
                 <span className="bg-red-950/80 border border-red-700/60 text-red-300 text-xs px-3 py-1.5 rounded-full font-bold">
-                  {trucoCantado === 'truco' ? '🗣 Truco' : trucoCantado === 'retruco' ? '🗣 Retruco' : '🗣 Vale Cuatro'}
+                  {trucoCantado === 'truco' ? 'Truco' : trucoCantado === 'retruco' ? 'Retruco' : 'Vale Cuatro'}
                 </span>
               </div>
             )}
@@ -410,7 +411,7 @@ export default function MesaTruco2v2({
             {florPendiente && (
               <div className="px-3 pb-3 flex flex-col gap-2">
                 <p className="text-yellow-400 text-xs font-bold text-center">
-                  🌸 Cantaron {florCantada === 'flor' ? 'Flor' : florCantada === 'conFlor' ? 'Con Flor Envido' : 'Contra Flor al Resto'}
+                  Cantaron {florCantada === 'flor' ? 'Flor' : florCantada === 'conFlor' ? 'Con Flor Envido' : 'Contra Flor al Resto'}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <BtnCanto onClick={responderFlorQuiero} color="yellow">Quiero ✓</BtnCanto>
@@ -442,10 +443,10 @@ export default function MesaTruco2v2({
 
         <p className="text-gray-500 text-xs uppercase tracking-wider text-center">
           {mostrandoMano
-            ? resultadoUltimaMano === 'jugador' ? '✅ Ganaron la mano'
-            : resultadoUltimaMano === 'maquina' ? '❌ Perdieron la mano'
-            : '🤝 Mano empatada'
-          : rondaTerminada ? '⏳ Nueva ronda...'
+            ? resultadoUltimaMano === 'jugador' ? 'Ganaron la mano'
+            : resultadoUltimaMano === 'maquina' ? 'Perdieron la mano'
+            : 'Mano empatada'
+          : rondaTerminada ? 'Nueva ronda...'
           : !puedeJugar ? turnoLabel
           : 'Elegí una carta — doble click para jugar'}
         </p>
@@ -493,7 +494,10 @@ export default function MesaTruco2v2({
               </div>
             )}
           </div>
-          <span className="text-gray-400 text-xs font-semibold">{miNombre} {tengoFlor ? '🌸' : ''}</span>
+          <span className="text-gray-400 text-xs font-semibold flex items-center gap-1">
+            {miNombre}
+            {tengoFlor ? <span className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-yellow-500/20 border border-yellow-400/40 text-yellow-300 text-[8px] font-black">F</span> : null}
+          </span>
         </div>
 
         {/* Botones mobile */}
@@ -513,7 +517,7 @@ export default function MesaTruco2v2({
           {hayFlor && florEquipoActiva && rivalEquipoTieneFlor && !florResuelta && !florPendiente && (
             <div className="flex flex-col gap-1">
               <p className="text-xs text-yellow-400 font-bold uppercase tracking-wider text-center">Flor</p>
-              <BtnCanto onClick={() => cantarFlor('flor')} color="yellow">🌸 La mía es Flor</BtnCanto>
+              <BtnCanto onClick={() => cantarFlor('flor')} color="yellow">La mía es Flor</BtnCanto>
               <BtnCanto onClick={() => cantarFlor('conFlor')} color="yellow">Con Flor Envido</BtnCanto>
               <BtnCanto onClick={() => cantarFlor('contraFlor')} color="yellow">Contra Flor al Resto</BtnCanto>
             </div>

@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import { SOCKET_URL } from '../config/socket'
@@ -56,7 +57,7 @@ function UnoBack({ small = false }) {
 
 function PlayerPill({ player, active, me }) {
   return (
-    <div className={`rounded-2xl border px-3 py-2 flex items-center gap-3 min-w-[150px] ${active ? 'border-yellow-400/70 bg-yellow-400/10 shadow-[0_0_24px_rgba(250,204,21,0.16)]' : 'border-white/[0.07] bg-white/[0.035]'}`}>
+    <div className={`rounded-2xl border px-2.5 py-2 flex items-center gap-2 min-w-0 flex-1 sm:flex-none sm:min-w-[140px] ${active ? 'border-yellow-400/70 bg-yellow-400/10 shadow-[0_0_24px_rgba(250,204,21,0.16)]' : 'border-white/[0.07] bg-white/[0.035]'}`}>
       <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-black ${active ? 'bg-yellow-400 text-slate-950' : 'bg-purple-900/70 text-white'}`}>{initials(player.nombre)}</div>
       <div className="min-w-0 flex-1">
         <p className="font-bold text-sm truncate">{me ? 'Vos' : player.nombre}</p>
@@ -110,6 +111,7 @@ function Lobby({ connected, error, code, onCreate, onJoin, onBack }) {
 }
 
 export default function Uno() {
+  usePageTitle('Uno')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { usuario } = useAuth()
@@ -210,14 +212,14 @@ export default function Uno() {
       <main className="relative flex-1 max-w-7xl mx-auto w-full px-4 py-5 flex flex-col gap-4 overflow-hidden">
         <div className="absolute inset-0 -z-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_35%,rgba(34,197,94,0.10),transparent)]" />
 
-        <div className="relative z-10 flex flex-wrap justify-center gap-3">
+        <div className="relative z-10 flex flex-wrap justify-center gap-1.5 sm:gap-3">
           {(game?.players || []).map(p => (
             <PlayerPill key={p.id} player={p} active={p.id === current?.id} me={p.id === socketId} />
           ))}
         </div>
 
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-4">
-          <section className="relative min-h-[430px] rounded-[40px] border border-emerald-400/15 bg-[radial-gradient(ellipse_at_center,#166534_0%,#064e3b_42%,#022c22_100%)] p-5 sm:p-8 flex flex-col items-center justify-center gap-6 shadow-[inset_0_0_0_10px_rgba(6,78,59,0.65),inset_0_0_60px_rgba(0,0,0,0.32),0_28px_80px_rgba(0,0,0,0.55)] overflow-hidden">
+          <section className="relative min-h-[300px] sm:min-h-[430px] rounded-[40px] border border-emerald-400/15 bg-[radial-gradient(ellipse_at_center,#166534_0%,#064e3b_42%,#022c22_100%)] p-5 sm:p-8 flex flex-col items-center justify-center gap-6 shadow-[inset_0_0_0_10px_rgba(6,78,59,0.65),inset_0_0_60px_rgba(0,0,0,0.32),0_28px_80px_rgba(0,0,0,0.55)] overflow-hidden">
             <div className="absolute inset-0 opacity-20" style={{ backgroundImage:'radial-gradient(rgba(255,255,255,0.14) 1px, transparent 1px)', backgroundSize:'18px 18px' }} />
             <div className="absolute inset-x-10 top-6 h-px bg-gradient-to-r from-transparent via-emerald-200/20 to-transparent" />
             <div className="relative z-10 flex items-center gap-10 sm:gap-16">

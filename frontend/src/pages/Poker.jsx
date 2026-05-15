@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
 import { SOCKET_URL } from '../config/socket'
@@ -568,6 +569,7 @@ function Seat({ player, isDealer, isCurrent, isWinner, reveal, compact=false }) 
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Poker() {
+  usePageTitle('Poker')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { usuario } = useAuth()
@@ -740,10 +742,16 @@ export default function Poker() {
   const topPlayers = pantalla === 'juego' && onlineGame
     ? players.filter(p => p.id !== human?.id)
     : players.slice(1)
-  const CW = 58, CH = 82
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 640)
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  const CW = isMobile ? 38 : 58, CH = isMobile ? 54 : 82
   const isOnlineTable = pantalla === 'juego' && !!onlineGame
-  const topSeatPlayers = isOnlineTable ? topPlayers.slice(0, 3) : topPlayers
-  const sideSeatPlayers = isOnlineTable ? topPlayers.slice(3, 5) : []
+  const topSeatPlayers = isMobile ? topPlayers : (isOnlineTable ? topPlayers.slice(0, 3) : topPlayers)
+  const sideSeatPlayers = isMobile ? [] : (isOnlineTable ? topPlayers.slice(3, 5) : [])
   const isOnlineHost = isOnlineTable && prelobby?.host === socketId
 
   // Quick raise presets
@@ -843,8 +851,8 @@ export default function Poker() {
           </div>
 
           {/* ── Oval table ── */}
-          <div style={{ width:'100%', maxWidth:980, display:'grid', gridTemplateColumns:isOnlineTable?'112px minmax(0, 780px) 112px':'minmax(0, 780px)', alignItems:'center', gap:12 }}>
-            {isOnlineTable && (
+          <div style={{ width:'100%', display:'grid', gridTemplateColumns:(isOnlineTable&&!isMobile)?'112px minmax(0, 1fr) 112px':'minmax(0, 1fr)', alignItems:'center', gap:12 }}>
+            {isOnlineTable && !isMobile && (
               <div style={{ minHeight:210, display:'flex', alignItems:'center', justifyContent:'center' }}>
                 {sideSeatPlayers[0] && (
                   <Seat player={sideSeatPlayers[0]}
@@ -936,7 +944,7 @@ export default function Poker() {
               </div>
             </div>
 
-            {isOnlineTable && (
+            {isOnlineTable && !isMobile && (
               <div style={{ minHeight:210, display:'flex', alignItems:'center', justifyContent:'center' }}>
                 {sideSeatPlayers[1] && (
                   <Seat player={sideSeatPlayers[1]}

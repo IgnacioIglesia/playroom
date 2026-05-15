@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from '../firebase'
 import Navbar from '../components/Navbar'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Footer from '../components/Footer'
 import EmptyState from '../components/EmptyState'
 
@@ -15,12 +16,12 @@ const DIFF_COLOR = {
   experto: 'text-orange-400', maestro: 'text-red-400', extremo: 'text-purple-400',
 }
 const JUEGOS_CATALOG = [
-  { id: 'truco',        nombre: 'Truco vs Máquina', icono: '🃏' },
-  { id: 'truco-online', nombre: 'Truco Online',     icono: '🌐' },
-  { id: 'sudoku',       nombre: 'Sudoku',           icono: '🔢' },
-  { id: 'buscaminas',   nombre: 'Buscaminas',       icono: '💣' },
-  { id: 'banderas',     nombre: 'Banderas',         icono: '🏳️' },
-  { id: 'capitales',    nombre: 'Capitales',        icono: '🌍' },
+  { id: 'truco',        nombre: 'Truco vs Máquina', icono: 'TR' },
+  { id: 'truco-online', nombre: 'Truco Online',     icono: 'TO' },
+  { id: 'sudoku',       nombre: 'Sudoku',           icono: 'SU' },
+  { id: 'buscaminas',   nombre: 'Buscaminas',       icono: 'BU' },
+  { id: 'banderas',     nombre: 'Banderas',         icono: 'BA' },
+  { id: 'capitales',    nombre: 'Capitales',        icono: 'CA' },
 ]
 
 function fmt(s) {
@@ -34,10 +35,11 @@ function timeAgo(date) {
   if (diff < 3600)   return `Hace ${Math.floor(diff / 60)} min`
   if (diff < 86400)  return `Hace ${Math.floor(diff / 3600)}h`
   if (diff < 604800) return `Hace ${Math.floor(diff / 86400)}d`
-  return date.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+  return date.toLocaleDateString('es-UY', { day: 'numeric', month: 'short' })
 }
 
 export default function PerfilPublico() {
+  usePageTitle('Perfil')
   const { uid } = useParams()
 
   const [perfil, setPerfil]       = useState(null)   // { displayName, photoURL, favoritos }
@@ -175,7 +177,7 @@ export default function PerfilPublico() {
                   {/* Truco */}
                   <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">🃏</span>
+                      <span className="w-7 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 text-purple-200 text-[10px] font-extrabold flex items-center justify-center flex-shrink-0">TR</span>
                       <p className="text-sm font-bold text-white">Truco</p>
                     </div>
                     {stats?.truco.partidas > 0 ? (
@@ -193,7 +195,7 @@ export default function PerfilPublico() {
                   {/* Sudoku */}
                   <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">🔢</span>
+                      <span className="w-7 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 text-purple-200 text-[10px] font-extrabold flex items-center justify-center flex-shrink-0">SU</span>
                       <p className="text-sm font-bold text-white">Sudoku</p>
                     </div>
                     {stats?.sudoku.partidas > 0 ? (
@@ -210,7 +212,7 @@ export default function PerfilPublico() {
                   {/* Buscaminas */}
                   <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 flex flex-col gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-xl">💣</span>
+                      <span className="w-7 h-7 rounded-full bg-purple-600/20 border border-purple-500/30 text-purple-200 text-[10px] font-extrabold flex items-center justify-center flex-shrink-0">BU</span>
                       <p className="text-sm font-bold text-white">Buscaminas</p>
                     </div>
                     {stats?.buscaminas.partidas > 0 ? (
@@ -236,7 +238,8 @@ export default function PerfilPublico() {
                       if (!j) return null
                       return (
                         <span key={id} className="flex items-center gap-1.5 bg-purple-950/50 border border-purple-600/30 text-white text-xs font-semibold px-3 py-1.5 rounded-xl">
-                          {j.icono} {j.nombre}
+                          <span className="text-[9px] font-extrabold text-purple-300 opacity-70">{j.icono}</span>
+                          {j.nombre}
                         </span>
                       )
                     })}
@@ -276,15 +279,18 @@ function Row({ label, value, color = 'text-white' }) {
   )
 }
 
+const HIST_ABBR_PUB  = { truco: 'TR', sudoku: 'SU', buscaminas: 'BU' }
+const HIST_NOMBRES_PUB = { truco: 'Truco', sudoku: 'Sudoku', buscaminas: 'Buscaminas' }
+
 function HistorialRow({ entry }) {
-  const ICONS  = { truco: '🃏', sudoku: '🔢', buscaminas: '💣' }
-  const NOMBRES = { truco: 'Truco', sudoku: 'Sudoku', buscaminas: 'Buscaminas' }
   return (
     <div className="flex items-center gap-3 bg-white/[0.02] border border-white/[0.05] rounded-xl px-4 py-2.5">
-      <span className="text-base w-6 text-center flex-shrink-0">{ICONS[entry.tipo] || '🎮'}</span>
+      <span className="w-6 h-6 rounded-full bg-purple-600/20 border border-purple-500/30 text-purple-200 text-[9px] font-extrabold flex items-center justify-center flex-shrink-0">
+        {HIST_ABBR_PUB[entry.tipo] || 'PL'}
+      </span>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-white text-xs font-semibold">{NOMBRES[entry.tipo] || entry.tipo}</span>
+          <span className="text-white text-xs font-semibold">{HIST_NOMBRES_PUB[entry.tipo] || entry.tipo}</span>
           {entry.dificultad && (
             <span className={`text-[10px] font-semibold ${DIFF_COLOR[entry.dificultad] || 'text-gray-400'}`}>
               {DIFF_LABEL[entry.dificultad] || entry.dificultad}
