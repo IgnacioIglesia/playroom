@@ -11,7 +11,7 @@ if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0.1 })
 }
 
-const ALLOWED_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:5173'
+const ALLOWED_ORIGIN = (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '')
 
 const registerTruco    = require('./routes/truco')
 const registerPoker    = require('./routes/poker')
